@@ -1,49 +1,79 @@
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { loadEconomySettings } from '@/lib/economy';
+import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/env';
 import { EconomySettingsForm } from './_components/economy-settings-form';
-
-const quickLinks = [
-  {
-    title: 'KYC ve Uyum',
-    description: 'Bekleyen kullanıcı doğrulamalarını onaylayın, logları inceleyin ve denetim kayıtlarını yönetin.'
-  },
-  {
-    title: 'Varlık Kataloğu',
-    description: 'Hayvan, ürün ve besleme tiplerini güncelleyin; üretim parametrelerini versiyonlayın.'
-  },
-  {
-    title: 'Pazaryeri Gözetimi',
-    description: 'Relist sürelerini takip edin, manipülasyon risklerini denetleyin, ihlallere müdahale edin.'
-  },
-  {
-    title: 'Olay ve Risk Yönetimi',
-    description: 'Hastalık veya kuraklık gibi makro olayları tetikleyin ya da sonlandırın.'
-  }
-];
+import { KycReviewQueue } from './_components/kyc-review-queue';
+import { WithdrawalQueue } from './_components/withdrawal-queue';
+import { PaymentProviderCard } from './_components/payment-provider-card';
 
 export default async function AdminPage() {
-  const settings = await loadEconomySettings();
+  const [settings, pendingProfiles, pendingWithdrawals, recentIntents] = await Promise.all([
+    loadEconomySettings(),
+    prisma.profile.findMany({
+      where: { kycStatus: 'PENDING' },
+      orderBy: { kycSubmittedAt: 'asc' },
+      include: { user: { select: { email: true } } }
+    }),
+    prisma.withdrawalRequest.findMany({
+      where: { status: { in: ['PENDING', 'APPROVED'] } },
+      orderBy: { createdAt: 'asc' },
+      include: { user: { select: { email: true } }, wallet: { select: { currency: true } } }
+    }),
+    prisma.paymentIntent.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    })
+  ]);
+
+  const kycQueue = pendingProfiles.map((profile) => ({
+    id: profile.id,
+    fullName: profile.fullName,
+    nationalId: profile.nationalId,
+    phoneNumber: profile.phoneNumber,
+    kycSubmittedAt: profile.kycSubmittedAt?.toISOString() ?? null,
+    selfieObjectKey: profile.selfieObjectKey,
+    idFrontObjectKey: profile.idFrontObjectKey,
+    idBackObjectKey: profile.idBackObjectKey,
+    user: profile.user
+  }));
+
+  const withdrawalQueue = pendingWithdrawals.map((withdrawal) => ({
+    id: withdrawal.id,
+    amount: Number(withdrawal.amount),
+    iban: withdrawal.iban,
+    status: withdrawal.status,
+    createdAt: withdrawal.createdAt.toISOString(),
+    reason: withdrawal.reason,
+    user: withdrawal.user,
+    wallet: withdrawal.wallet
+  }));
+
+  const paymentIntents = recentIntents.map((intent) => ({
+    id: intent.id,
+    amount: Number(intent.amount),
+    status: intent.status,
+    reference: intent.reference,
+    createdAt: intent.createdAt.toISOString()
+  }));
 
   return (
     <div className="space-y-8">
       <header className="space-y-3">
         <h1 className="text-3xl font-semibold">Yönetim Paneli</h1>
         <p className="text-sm text-slate-600">
-          Ekonomi ayarları, varlık katalogu, kullanıcı yönetimi ve log görüntüleme için merkezi panel.
+          Ekonomi ayarları, ödeme sağlayıcıları ve uyum süreçleri için merkezi panel.
         </p>
       </header>
       <EconomySettingsForm initialSettings={settings} />
-      <section className="grid gap-6 md:grid-cols-2">
-        {quickLinks.map((item) => (
-          <Card key={item.title} className="flex flex-col justify-between space-y-4 p-5">
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold">{item.title}</h2>
-              <p className="text-sm text-slate-600">{item.description}</p>
-            </div>
-            <Button variant="outline">Aç</Button>
-          </Card>
-        ))}
+      <PaymentProviderCard
+        provider={env.PAYMENT_PROVIDER}
+        maxDepositsPerHour={env.PAYMENT_MAX_DEPOSITS_PER_HOUR}
+        maxDepositAmount={env.PAYMENT_MAX_DEPOSIT_TRY_PER_HOUR}
+        recentIntents={paymentIntents}
+      />
+      <section className="grid gap-6 lg:grid-cols-2">
+        <KycReviewQueue profiles={kycQueue} />
+        <WithdrawalQueue withdrawals={withdrawalQueue} />
       </section>
     </div>
   );

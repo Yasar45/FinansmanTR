@@ -31,10 +31,44 @@ enum WalletTransactionType {
   EXCHANGE_TRADE
 }
 
+enum PaymentProviderType {
+  MOCK
+  IYZICO
+  PAYTR
+}
+
+enum PaymentIntentStatus {
+  PENDING
+  AUTHORIZED
+  SETTLED
+  FAILED
+  CANCELLED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SETTLED
+}
+
 enum KycStatus {
   UNVERIFIED
   PENDING
   VERIFIED
+}
+
+enum KycDocumentType {
+  IDENTITY
+  ADDRESS
+  SELFIE
+}
+
+enum KycDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum PlotType {
@@ -103,35 +137,56 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]   @relation("audit_actor")
   reviews       KycDocument[] @relation("kyc_reviewer")
+  kycReviewedProfiles Profile[] @relation("profile_kyc_reviewer")
+  paymentIntents PaymentIntent[]
+  withdrawalRequests WithdrawalRequest[]
+  withdrawalReviews  WithdrawalRequest[] @relation("withdrawal_reviewer")
 }
 
 model Profile {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  firstName       String?
-  lastName        String?
-  preferredLocale String    @default("tr-TR")
-  phoneNumber     String?
-  address         Json?
-  birthDate       DateTime?
-  kycStatus       KycStatus @default(UNVERIFIED)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id])
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  fullName            String?
+  preferredLocale     String    @default("tr-TR")
+  phoneNumber         String?
+  nationalId          String?   @unique
+  birthDate           DateTime?
+  address             Json?
+  selfieObjectKey     String?
+  idFrontObjectKey    String?
+  idBackObjectKey     String?
+  consentTermsAt      DateTime?
+  consentKvkkAt       DateTime?
+  consentRiskAt       DateTime?
+  consentCookieAt     DateTime?
+  consentIp           String?
+  kycStatus           KycStatus @default(UNVERIFIED)
+  kycSubmittedAt      DateTime?
+  kycReviewedAt       DateTime?
+  kycReviewerId       String?
+  kycDecisionReason   String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id])
+  kycReviewer         User?     @relation("profile_kyc_reviewer", fields: [kycReviewerId], references: [id])
 }
 
 model KycDocument {
-  id        String    @id @default(cuid())
-  userId    String
-  type      String
-  status    String    @default("PENDING")
-  data      Json
-  createdAt DateTime  @default(now())
-  reviewedAt DateTime?
-  reviewerId String?
+  id           String            @id @default(cuid())
+  userId       String
+  type         KycDocumentType
+  status       KycDocumentStatus @default(PENDING)
+  storageKey   String?
+  metadata     Json?
+  createdAt    DateTime          @default(now())
+  reviewedAt   DateTime?
+  reviewerId   String?
+  decisionNote String?
 
   user     User @relation(fields: [userId], references: [id])
   reviewer User? @relation("kyc_reviewer", fields: [reviewerId], references: [id])
+
+  @@unique([userId, type])
 }
 
 model Session {
@@ -187,6 +242,8 @@ model Wallet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   ledger    WalletTransaction[]
+  paymentIntents PaymentIntent[]
+  withdrawalRequests WithdrawalRequest[]
 
   user User @relation(fields: [userId], references: [id])
 }
@@ -198,9 +255,13 @@ model WalletTransaction {
   amount    Decimal
   balance   Decimal
   metadata  Json?
+  paymentIntentId   String?
+  withdrawalRequestId String?
   createdAt DateTime @default(now())
 
   wallet Wallet @relation(fields: [walletId], references: [id])
+  paymentIntent   PaymentIntent?   @relation(fields: [paymentIntentId], references: [id])
+  withdrawalRequest WithdrawalRequest? @relation(fields: [withdrawalRequestId], references: [id])
 
   @@index([walletId, createdAt])
 }
@@ -472,4 +533,46 @@ model SupplyInventory {
   supplyType SupplyType @relation(fields: [supplyTypeId], references: [id])
 
   @@unique([ownerId, supplyTypeId])
+}
+
+model PaymentIntent {
+  id          String               @id @default(cuid())
+  userId      String
+  walletId    String
+  provider    PaymentProviderType
+  amount      Decimal
+  status      PaymentIntentStatus  @default(PENDING)
+  reference   String               @unique
+  checkoutUrl String?
+  metadata    Json?
+  capturedAt  DateTime?
+  settledAt   DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  user        User   @relation(fields: [userId], references: [id])
+  wallet      Wallet @relation(fields: [walletId], references: [id])
+  transactions WalletTransaction[]
+}
+
+model WithdrawalRequest {
+  id         String            @id @default(cuid())
+  userId     String
+  walletId   String
+  amount     Decimal
+  iban       String
+  status     WithdrawalStatus  @default(PENDING)
+  reason     String?
+  reviewerId String?
+  reviewedAt DateTime?
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  user     User   @relation(fields: [userId], references: [id])
+  wallet   Wallet @relation(fields: [walletId], references: [id])
+  reviewer User?  @relation("withdrawal_reviewer", fields: [reviewerId], references: [id])
+  transactions WalletTransaction[]
+
+  @@index([status, createdAt])
 }

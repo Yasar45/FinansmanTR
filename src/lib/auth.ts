@@ -5,6 +5,8 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { env } from '@/lib/env';
+import { KycStatus } from '@prisma/client';
 
 export type Role = 'USER' | 'MOD' | 'ADMIN';
 export type Ability = 'manage:pricing' | 'manage:listings' | 'manage:users';
@@ -16,6 +18,7 @@ declare module 'next-auth' {
       role: Role;
       abilities: Ability[];
       locale: string;
+      kycStatus: KycStatus;
     };
   }
 
@@ -59,8 +62,8 @@ export const authOptions: AuthOptions = {
       }
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? 'stub',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'stub'
+      clientId: env.GOOGLE_CLIENT_ID ?? 'stub',
+      clientSecret: env.GOOGLE_CLIENT_SECRET ?? 'stub'
     })
   ],
   session: {
@@ -76,7 +79,8 @@ export const authOptions: AuthOptions = {
         id: user.id,
         role: (user.role as Role) ?? 'USER',
         abilities: (user.abilities as Ability[]) ?? [],
-        locale: profile?.preferredLocale ?? 'tr-TR'
+        locale: profile?.preferredLocale ?? 'tr-TR',
+        kycStatus: profile?.kycStatus ?? KycStatus.UNVERIFIED
       };
       return session;
     }

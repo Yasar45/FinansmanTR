@@ -19,12 +19,14 @@ import {
   seasonalityMultiplier
 } from '@/lib/economy';
 import { toDecimal } from '@/lib/money';
+import { env } from '@/lib/env';
 
+const redisUrl = new URL(env.REDIS_URL);
 const redisConnection = {
   connection: {
-    host: process.env.REDIS_HOST ?? 'localhost',
-    port: Number(process.env.REDIS_PORT ?? '6379'),
-    password: process.env.REDIS_PASSWORD ?? undefined
+    host: redisUrl.hostname,
+    port: Number(redisUrl.port || '6379'),
+    password: redisUrl.password || undefined
   }
 };
 

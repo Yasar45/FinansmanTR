@@ -59,6 +59,12 @@ export default function SignInPage() {
           <Button variant="outline" className="w-full" onClick={() => signIn('google')}>
             Google ile devam et
           </Button>
+          <p className="text-xs text-slate-500">
+            Hesabınız yok mu?{' '}
+            <a href="/auth/sign-up" className="font-medium text-brand underline">
+              Kayıt olun
+            </a>
+          </p>
         </div>
       </div>
     </main>

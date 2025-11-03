@@ -6,7 +6,8 @@ import {
   PlotType,
   PlotStatus,
   MarketplaceListingStatus,
-  CropStatus
+  CropStatus,
+  KycStatus
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -27,9 +28,14 @@ async function main() {
       abilities: ['manage:pricing', 'manage:listings', 'manage:users'],
       profile: {
         create: {
-          firstName: 'Admin',
-          lastName: 'User',
-          preferredLocale: 'tr-TR'
+          fullName: 'Admin User',
+          preferredLocale: 'tr-TR',
+          consentTermsAt: new Date(),
+          consentKvkkAt: new Date(),
+          consentRiskAt: new Date(),
+          consentCookieAt: new Date(),
+          consentIp: '127.0.0.1',
+          kycStatus: KycStatus.VERIFIED
         }
       },
       wallets: {
@@ -49,9 +55,14 @@ async function main() {
       role: Role.USER,
       profile: {
         create: {
-          firstName: 'Demo',
-          lastName: 'Çiftçi',
-          preferredLocale: 'tr-TR'
+          fullName: 'Demo Çiftçi',
+          preferredLocale: 'tr-TR',
+          phoneNumber: '+905551112233',
+          consentTermsAt: new Date(),
+          consentKvkkAt: new Date(),
+          consentRiskAt: new Date(),
+          consentCookieAt: new Date(),
+          consentIp: '127.0.0.1'
         }
       },
       wallets: {
