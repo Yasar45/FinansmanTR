@@ -7,7 +7,8 @@ import {
   PlotStatus,
   MarketplaceListingStatus,
   CropStatus,
-  KycStatus
+  KycStatus,
+  BlacklistType
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -429,6 +430,37 @@ async function main() {
       }
     }
   });
+
+  const existingFraudFlag = await prisma.fraudFlag.findFirst({ where: { userId: user.id } });
+  if (!existingFraudFlag) {
+    await prisma.fraudFlag.create({
+      data: {
+        userId: user.id,
+        createdById: admin.id,
+        reason: 'Seeded uyarı: Sık işlem izleme'
+      }
+    });
+  }
+
+  const blacklistEntries = await prisma.blacklistEntry.findMany();
+  if (blacklistEntries.length === 0) {
+    await prisma.blacklistEntry.createMany({
+      data: [
+        {
+          type: BlacklistType.IP,
+          value: '203.0.113.45',
+          reason: 'Seeded şüpheli IP',
+          createdById: admin.id
+        },
+        {
+          type: BlacklistType.ADDRESS,
+          value: 'Sahte Sokak No:1, İstanbul',
+          reason: 'Seeded kara liste adresi',
+          createdById: admin.id
+        }
+      ]
+    });
+  }
 
   await prisma.auditLog.create({
     data: {

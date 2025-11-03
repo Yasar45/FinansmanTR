@@ -6,6 +6,7 @@ import type { EconomySettings } from '@/lib/economy';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { updateEconomySettingsAction } from '../actions';
 
 interface Props {
   initialSettings: EconomySettings;
@@ -80,72 +81,67 @@ export function EconomySettingsForm({ initialSettings }: Props) {
     setMessage(null);
     startTransition(async () => {
       try {
-        const response = await fetch('/api/admin/economy', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tick: {
-              tickLengthMinutes: Number(form.tickLengthMinutes),
-              animalProductivityMultiplier: Number(form.animalProductivityMultiplier),
-              cropProductivityMultiplier: Number(form.cropProductivityMultiplier),
-              mortalityRateBps: Number(form.mortalityRateBps),
-              diseaseEvent: {
-                active: Boolean(form.diseaseActive),
-                penalty: Number(form.diseasePenalty),
-                affectedSeasonalityKeys: form.diseaseKeys
-                  .split(',')
-                  .map((key) => key.trim())
-                  .filter(Boolean)
-              },
-              droughtEvent: {
-                active: Boolean(form.droughtActive),
-                penalty: Number(form.droughtPenalty)
-              },
-              seasonality: JSON.parse(form.seasonality || '{}')
-            },
-            pricing: {
-              exchange: {
-                defaultSpreadBps: Number(form.exchangeSpreadBps),
-                tradeFeeBps: Number(form.exchangeTradeFeeBps)
-              },
-              marketplace: {
-                makerFeeBps: Number(form.makerFeeBps),
-                takerFeeBps: Number(form.takerFeeBps),
-                floorPrices: JSON.parse(form.floorPrices || '{}'),
-                ceilingPrices: JSON.parse(form.ceilingPrices || '{}'),
-                relistCooldownHours: Number(form.relistCooldownHours),
-                dailyListingLimit: Number(form.dailyListingLimit)
-              },
-              wallet: {
-                depositFeeBps: Number(form.depositFeeBps),
-                withdrawFeeBps: Number(form.withdrawFeeBps)
-              },
-              guardrails: {
-                maxAnimalsPerUser: Number(form.maxAnimalsPerUser),
-                maxPlotsPerUser: Number(form.maxPlotsPerUser)
-              },
-              rentEscalationBps: Number(form.rentEscalationBps)
-            },
-            events: {
-              disease: {
-                active: Boolean(form.diseaseEventActive),
-                affectedSeasonalityKeys: form.diseaseKeys
-                  .split(',')
-                  .map((key) => key.trim())
-                  .filter(Boolean)
-              },
-              drought: {
-                active: Boolean(form.droughtEventActive),
-                severity: Number(form.droughtSeverity)
-              }
-            }
-          })
-        });
+        const seasonality = JSON.parse(form.seasonality || '{}');
+        const floorPrices = JSON.parse(form.floorPrices || '{}');
+        const ceilingPrices = JSON.parse(form.ceilingPrices || '{}');
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error('Ekonomi ayarları güncellenemedi: ' + JSON.stringify(error));
-        }
+        await updateEconomySettingsAction({
+          tick: {
+            tickLengthMinutes: Number(form.tickLengthMinutes),
+            animalProductivityMultiplier: Number(form.animalProductivityMultiplier),
+            cropProductivityMultiplier: Number(form.cropProductivityMultiplier),
+            mortalityRateBps: Number(form.mortalityRateBps),
+            diseaseEvent: {
+              active: Boolean(form.diseaseActive),
+              penalty: Number(form.diseasePenalty),
+              affectedSeasonalityKeys: form.diseaseKeys
+                .split(',')
+                .map((key) => key.trim())
+                .filter(Boolean)
+            },
+            droughtEvent: {
+              active: Boolean(form.droughtActive),
+              penalty: Number(form.droughtPenalty)
+            },
+            seasonality
+          },
+          pricing: {
+            exchange: {
+              defaultSpreadBps: Number(form.exchangeSpreadBps),
+              tradeFeeBps: Number(form.exchangeTradeFeeBps)
+            },
+            marketplace: {
+              makerFeeBps: Number(form.makerFeeBps),
+              takerFeeBps: Number(form.takerFeeBps),
+              floorPrices,
+              ceilingPrices,
+              relistCooldownHours: Number(form.relistCooldownHours),
+              dailyListingLimit: Number(form.dailyListingLimit)
+            },
+            wallet: {
+              depositFeeBps: Number(form.depositFeeBps),
+              withdrawFeeBps: Number(form.withdrawFeeBps)
+            },
+            guardrails: {
+              maxAnimalsPerUser: Number(form.maxAnimalsPerUser),
+              maxPlotsPerUser: Number(form.maxPlotsPerUser)
+            },
+            rentEscalationBps: Number(form.rentEscalationBps)
+          },
+          events: {
+            disease: {
+              active: Boolean(form.diseaseEventActive),
+              affectedSeasonalityKeys: form.diseaseKeys
+                .split(',')
+                .map((key) => key.trim())
+                .filter(Boolean)
+            },
+            drought: {
+              active: Boolean(form.droughtEventActive),
+              severity: Number(form.droughtSeverity)
+            }
+          }
+        });
         setMessage('Ekonomi ayarları başarıyla güncellendi.');
       } catch (error) {
         setMessage(error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu');

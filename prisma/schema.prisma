@@ -121,6 +121,7 @@ model User {
   passwordHash  String?
   role          Role         @default(USER)
   abilities     String[]     @default([])
+  isFrozen      Boolean      @default(false)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   profile       Profile?
@@ -143,6 +144,9 @@ model User {
   withdrawalReviews  WithdrawalRequest[] @relation("withdrawal_reviewer")
   disputesOpened     MarketplaceDispute[] @relation("dispute_opened_by")
   disputesResolved   MarketplaceDispute[] @relation("dispute_resolved_by")
+  fraudFlags          FraudFlag[]
+  fraudFlagsAuthored  FraudFlag[] @relation("fraud_flag_actor")
+  blacklistEntries    BlacklistEntry[] @relation("blacklist_actor")
 }
 
 model Profile {
@@ -167,6 +171,7 @@ model Profile {
   kycReviewedAt       DateTime?
   kycReviewerId       String?
   kycDecisionReason   String?
+  totpSecret          String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   user                User      @relation(fields: [userId], references: [id])
@@ -445,6 +450,38 @@ model Trade {
 
   order Order @relation(fields: [orderId], references: [id])
   taker User  @relation("trade_taker", fields: [takerId], references: [id])
+}
+
+model FraudFlag {
+  id          String   @id @default(cuid())
+  userId      String
+  createdById String
+  reason      String
+  createdAt   DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id])
+  createdBy User @relation("fraud_flag_actor", fields: [createdById], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+enum BlacklistType {
+  IP
+  ADDRESS
+}
+
+model BlacklistEntry {
+  id          String        @id @default(cuid())
+  type        BlacklistType
+  value       String
+  reason      String?
+  createdById String
+  createdAt   DateTime      @default(now())
+
+  createdBy User @relation("blacklist_actor", fields: [createdById], references: [id])
+
+  @@unique([type, value])
+  @@index([createdAt])
 }
 
 model MarketplaceDispute {

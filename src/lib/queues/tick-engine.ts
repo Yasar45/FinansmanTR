@@ -79,125 +79,14 @@ async function processHourlyTick(job: Job<TickPayload>) {
 async function processDailyTick(job: Job<TickPayload>) {
   const tickAt = new Date(job.data.tickAt);
   const settings = await loadEconomySettings();
-  const since = new Date(tickAt.getTime() - 24 * 60 * 60 * 1000);
   const users = await prisma.user.findMany({ select: { id: true } });
 
   for (const user of users) {
-    const animals = await prisma.animal.findMany({
-      where: { ownerId: user.id, status: { not: AnimalStatus.DEAD } },
-      include: { type: true }
-    });
-
-    const animalEvents: string[] = [];
-    const mortalityRate = toDecimal(settings.tick.mortalityRateBps ?? 0).div(10_000);
-
-    for (const animal of animals) {
-      const nextAge = animal.ageDays + 1;
-      const isMature = nextAge >= animal.type.maturityDays;
-      await prisma.animal.update({
-        where: { id: animal.id },
-        data: { ageDays: nextAge, isMature, lastAgedAt: tickAt }
-      });
-
-      if (mortalityRate.gt(0)) {
-        let risk = mortalityRate;
-        if (animal.feedDeficitTicks > 6) {
-          risk = risk.mul(2);
-        }
-        if (animal.type.lifespanDays && nextAge > animal.type.lifespanDays) {
-          risk = risk.mul(1.5);
-        }
-        if (Math.random() < risk.toNumber()) {
-          await prisma.animal.update({
-            where: { id: animal.id },
-            data: { status: AnimalStatus.DEAD }
-          });
-          const notification = await prisma.notification.create({
-            data: {
-              userId: user.id,
-              type: 'ANIMAL_LOSS',
-              payload: { animalId: animal.id, reason: 'MORTALITY', tickAt }
-            }
-          });
-          animalEvents.push(`Hayvan ${animal.id} mortalite nedeniyle kaybedildi.`);
-          await notificationsQueue.add('dispatch', {
-            userId: user.id,
-            notificationIds: [notification.id]
-          });
-        }
-      }
-    }
-
-    const logs = await prisma.productionLog.findMany({
-      where: { ownerId: user.id, tickAt: { gte: since, lt: tickAt } },
-      orderBy: { tickAt: 'asc' }
-    });
-
-    const dailySummary = logs.reduce(
-      (acc, log) => {
-        const scope = (log.details as any)?.scope ?? 'HOURLY';
-        if (scope !== 'HOURLY') return acc;
-        const details = log.details as Record<string, any>;
-        for (const output of details.outputs ?? []) {
-          const key = output.kind as string;
-          const value = toDecimal(output.qty ?? 0);
-          acc.outputs[key] = (acc.outputs[key] ?? new Decimal(0)).add(value);
-        }
-        for (const cost of details.costs ?? []) {
-          const key = cost.type as string;
-          const value = toDecimal(cost.amount ?? 0);
-          acc.costs[key] = (acc.costs[key] ?? new Decimal(0)).add(value);
-        }
-        acc.events.push(...(details.events ?? []));
-        return acc;
-      },
-      { outputs: {} as Record<string, Decimal>, costs: {} as Record<string, Decimal>, events: [] as string[] }
-    );
-
-    const events = [...animalEvents];
-
-    await prisma.productionLog.create({
-      data: {
-        ownerId: user.id,
-        tickAt,
-        details: {
-          scope: 'DAILY',
-          outputs: Object.entries(dailySummary.outputs).map(([kind, qty]) => ({
-            kind,
-            qty: qty.toString()
-          })),
-          costs: Object.entries(dailySummary.costs).map(([type, amount]) => ({
-            type,
-            amount: amount.toString()
-          })),
-          events: [...dailySummary.events, ...events]
-        }
-      }
-    });
-
-    const notification = await prisma.notification.create({
-      data: {
-        userId: user.id,
-        type: 'DAILY_ECONOMY',
-        payload: {
-          tickAt,
-          outputs: dailySummary.outputs,
-          costs: dailySummary.costs,
-          events: [...dailySummary.events, ...events]
-        }
-      }
-    });
-
-    await notificationsQueue.add('dispatch', {
-      userId: user.id,
-      notificationIds: [notification.id]
-    });
-
-    await payoutsQueue.add('settle-daily', { userId: user.id, tickAt });
+    await processUserDailyTick(user.id, tickAt, settings);
   }
 }
 
-async function processUserHourlyTick(userId: string, tickAt: Date, settings: EconomySettings) {
+export async function processUserHourlyTick(userId: string, tickAt: Date, settings: EconomySettings) {
   return prisma.$transaction(async (tx) => {
     const wallet = await tx.wallet.findFirst({ where: { userId } });
     let walletBalance = wallet ? new Decimal(wallet.balance) : new Decimal(0);
@@ -474,6 +363,128 @@ async function processUserHourlyTick(userId: string, tickAt: Date, settings: Eco
 
     return { notifications };
   });
+}
+
+export async function processUserDailyTick(userId: string, tickAt: Date, settings: EconomySettings) {
+  const since = new Date(tickAt.getTime() - 24 * 60 * 60 * 1000);
+  const animals = await prisma.animal.findMany({
+    where: { ownerId: userId, status: { not: AnimalStatus.DEAD } },
+    include: { type: true }
+  });
+
+  const animalEvents: string[] = [];
+  const mortalityRate = toDecimal(settings.tick.mortalityRateBps ?? 0).div(10_000);
+
+  for (const animal of animals) {
+    const nextAge = animal.ageDays + 1;
+    const isMature = nextAge >= animal.type.maturityDays;
+    await prisma.animal.update({
+      where: { id: animal.id },
+      data: { ageDays: nextAge, isMature, lastAgedAt: tickAt }
+    });
+
+    if (mortalityRate.gt(0)) {
+      let risk = mortalityRate;
+      if (animal.feedDeficitTicks > 6) {
+        risk = risk.mul(2);
+      }
+      if (animal.type.lifespanDays && nextAge > animal.type.lifespanDays) {
+        risk = risk.mul(1.5);
+      }
+      if (Math.random() < risk.toNumber()) {
+        await prisma.animal.update({
+          where: { id: animal.id },
+          data: { status: AnimalStatus.DEAD }
+        });
+        const notification = await prisma.notification.create({
+          data: {
+            userId,
+            type: 'ANIMAL_LOSS',
+            payload: { animalId: animal.id, reason: 'MORTALITY', tickAt }
+          }
+        });
+        animalEvents.push(`Hayvan ${animal.id} mortalite nedeniyle kaybedildi.`);
+        await notificationsQueue.add('dispatch', {
+          userId,
+          notificationIds: [notification.id]
+        });
+      }
+    }
+  }
+
+  const logs = await prisma.productionLog.findMany({
+    where: { ownerId: userId, tickAt: { gte: since, lt: tickAt } },
+    orderBy: { tickAt: 'asc' }
+  });
+
+  const dailySummary = logs.reduce(
+    (acc, log) => {
+      const scope = (log.details as any)?.scope ?? 'HOURLY';
+      if (scope !== 'HOURLY') return acc;
+      const details = log.details as Record<string, any>;
+      for (const output of details.outputs ?? []) {
+        const key = output.kind as string;
+        const value = toDecimal(output.qty ?? 0);
+        acc.outputs[key] = (acc.outputs[key] ?? new Decimal(0)).add(value);
+      }
+      for (const cost of details.costs ?? []) {
+        const key = cost.type as string;
+        const value = toDecimal(cost.amount ?? 0);
+        acc.costs[key] = (acc.costs[key] ?? new Decimal(0)).add(value);
+      }
+      acc.events.push(...(details.events ?? []));
+      return acc;
+    },
+    { outputs: {} as Record<string, Decimal>, costs: {} as Record<string, Decimal>, events: [] as string[] }
+  );
+
+  const events = [...animalEvents];
+
+  await prisma.productionLog.create({
+    data: {
+      ownerId: userId,
+      tickAt,
+      details: {
+        scope: 'DAILY',
+        outputs: Object.entries(dailySummary.outputs).map(([kind, qty]) => ({
+          kind,
+          qty: qty.toString()
+        })),
+        costs: Object.entries(dailySummary.costs).map(([type, amount]) => ({
+          type,
+          amount: amount.toString()
+        })),
+        events: [...dailySummary.events, ...events]
+      }
+    }
+  });
+
+  const notification = await prisma.notification.create({
+    data: {
+      userId,
+      type: 'DAILY_ECONOMY',
+      payload: {
+        tickAt,
+        outputs: dailySummary.outputs,
+        costs: dailySummary.costs,
+        events: [...dailySummary.events, ...events]
+      }
+    }
+  });
+
+  await notificationsQueue.add('dispatch', {
+    userId,
+    notificationIds: [notification.id]
+  });
+
+  await payoutsQueue.add('settle-daily', { userId, tickAt });
+}
+
+export async function runManualTickForUser(userId: string) {
+  const tickAt = new Date();
+  const settings = await loadEconomySettings();
+  await processUserHourlyTick(userId, tickAt, settings);
+  await processUserDailyTick(userId, tickAt, settings);
 }
 
 function mapOutputKind(name: string): OutputKind {
