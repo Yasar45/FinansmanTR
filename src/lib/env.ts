@@ -19,6 +19,9 @@ const envSchema = z
     PAYMENT_MAX_DEPOSITS_PER_HOUR: z.coerce.number().int().positive().default(20),
     PAYMENT_MAX_DEPOSIT_TRY_PER_HOUR: z.coerce.number().positive().default(100000),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).optional(),
+    LOGFLARE_API_KEY: z.string().optional(),
+    LOGFLARE_SOURCE_TOKEN: z.string().optional(),
+    DISABLE_QUEUE_CONNECTIONS: z.coerce.boolean().default(false),
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional()
   })

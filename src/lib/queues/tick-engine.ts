@@ -21,7 +21,7 @@ import {
 import { toDecimal } from '@/lib/money';
 import { env } from '@/lib/env';
 
-const disableQueues = process.env.DISABLE_QUEUE_CONNECTIONS === 'true';
+const disableQueues = env.DISABLE_QUEUE_CONNECTIONS;
 
 const redisConnection = disableQueues
   ? undefined
