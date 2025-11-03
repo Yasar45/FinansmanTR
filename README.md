@@ -31,7 +31,15 @@ cp .env.example .env
 # PostgreSQL ve Redis bağlantılarını .env dosyasında tanımlayın
 npx prisma migrate dev
 npm run seed
+# veya pnpm db:seed
 npm run dev
+```
+
+Demo verilerini hızla ileri almak için:
+
+```bash
+pnpm demo:fastforward        # varsayılan 30 gün
+pnpm demo:fastforward 7      # isteğe bağlı gün parametresi
 ```
 
 Saatlik üretim turları için Upstash/Redis gibi bir ortamda `src/server/jobs/tickWorker.ts` içindeki

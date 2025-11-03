@@ -21,44 +21,136 @@ import {
 import { toDecimal } from '@/lib/money';
 import { env } from '@/lib/env';
 
-const redisUrl = new URL(env.REDIS_URL);
-const redisConnection = {
-  connection: {
-    host: redisUrl.hostname,
-    port: Number(redisUrl.port || '6379'),
-    password: redisUrl.password || undefined
-  }
-};
+const disableQueues = process.env.DISABLE_QUEUE_CONNECTIONS === 'true';
+
+const redisConnection = disableQueues
+  ? undefined
+  : (() => {
+      const redisUrl = new URL(env.REDIS_URL);
+      return {
+        connection: {
+          host: redisUrl.hostname,
+          port: Number(redisUrl.port || '6379'),
+          password: redisUrl.password || undefined
+        }
+      };
+    })();
 
 export interface TickPayload {
   tickAt: string;
 }
 
-export const hourlyQueue = new Queue<TickPayload>('production:hourly', redisConnection);
-export const hourlyScheduler = new QueueScheduler('production:hourly', redisConnection);
-export const dailyQueue = new Queue<TickPayload>('production:daily', redisConnection);
-export const dailyScheduler = new QueueScheduler('production:daily', redisConnection);
-export const notificationsQueue = new Queue('notifications', redisConnection);
-export const payoutsQueue = new Queue('payouts', redisConnection);
-export const kycQueue = new Queue('kyc', redisConnection);
+function createQueueStub<T>(name: string): Queue<T> {
+  const counts = {
+    waiting: 0,
+    active: 0,
+    completed: 0,
+    failed: 0,
+    delayed: 0,
+    paused: 0
+  };
+  const stub = {
+    name,
+    async add() {
+      return null as unknown as any;
+    },
+    async pause() {
+      return undefined;
+    },
+    async resume() {
+      return undefined;
+    },
+    async drain() {
+      return undefined;
+    },
+    async isPaused() {
+      return false;
+    },
+    async getJobCounts() {
+      return counts;
+    }
+  };
+  return stub as unknown as Queue<T>;
+}
 
-export const hourlyWorker = new Worker<TickPayload>(
-  'production:hourly',
-  async (job) => {
-    logger.info({ scope: 'hourly', jobId: job.id, tickAt: job.data.tickAt }, 'Processing hourly tick');
-    await processHourlyTick(job);
-  },
-  redisConnection
-);
+function createSchedulerStub(name: string): QueueScheduler {
+  const stub = {
+    name,
+    async waitUntilReady() {
+      return undefined;
+    },
+    async close() {
+      return undefined;
+    }
+  };
+  return stub as unknown as QueueScheduler;
+}
 
-export const dailyWorker = new Worker<TickPayload>(
-  'production:daily',
-  async (job) => {
-    logger.info({ scope: 'daily', jobId: job.id, tickAt: job.data.tickAt }, 'Processing daily tick');
-    await processDailyTick(job);
-  },
-  redisConnection
-);
+function createWorkerStub(name: string): Worker<TickPayload> {
+  const stub = {
+    name,
+    async pause() {
+      return undefined;
+    },
+    async resume() {
+      return undefined;
+    },
+    async isRunning() {
+      return false;
+    },
+    async close() {
+      return undefined;
+    },
+    on() {
+      return stub;
+    }
+  };
+  return stub as unknown as Worker<TickPayload>;
+}
+
+export const hourlyQueue = disableQueues
+  ? createQueueStub<TickPayload>('production:hourly')
+  : new Queue<TickPayload>('production:hourly', redisConnection!);
+export const hourlyScheduler = disableQueues
+  ? createSchedulerStub('production:hourly')
+  : new QueueScheduler('production:hourly', redisConnection!);
+export const dailyQueue = disableQueues
+  ? createQueueStub<TickPayload>('production:daily')
+  : new Queue<TickPayload>('production:daily', redisConnection!);
+export const dailyScheduler = disableQueues
+  ? createSchedulerStub('production:daily')
+  : new QueueScheduler('production:daily', redisConnection!);
+export const notificationsQueue = disableQueues
+  ? createQueueStub('notifications')
+  : new Queue('notifications', redisConnection!);
+export const payoutsQueue = disableQueues
+  ? createQueueStub('payouts')
+  : new Queue('payouts', redisConnection!);
+export const kycQueue = disableQueues
+  ? createQueueStub('kyc')
+  : new Queue('kyc', redisConnection!);
+
+export const hourlyWorker = disableQueues
+  ? createWorkerStub('production:hourly')
+  : new Worker<TickPayload>(
+      'production:hourly',
+      async (job) => {
+        logger.info({ scope: 'hourly', jobId: job.id, tickAt: job.data.tickAt }, 'Processing hourly tick');
+        await processHourlyTick(job);
+      },
+      redisConnection!
+    );
+
+export const dailyWorker = disableQueues
+  ? createWorkerStub('production:daily')
+  : new Worker<TickPayload>(
+      'production:daily',
+      async (job) => {
+        logger.info({ scope: 'daily', jobId: job.id, tickAt: job.data.tickAt }, 'Processing daily tick');
+        await processDailyTick(job);
+      },
+      redisConnection!
+    );
 
 async function processHourlyTick(job: Job<TickPayload>) {
   const tickAt = new Date(job.data.tickAt);

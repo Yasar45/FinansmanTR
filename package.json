@@ -13,6 +13,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
+    "db:seed": "prisma db seed",
+    "demo:fastforward": "tsx scripts/demo-fastforward.ts",
     "lint:fix": "next lint --fix"
   },
   "dependencies": {
@@ -77,5 +79,8 @@
     "typescript": "5.3.3",
     "vitest": "^1.2.1",
     "pino-pretty": "^10.3.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
