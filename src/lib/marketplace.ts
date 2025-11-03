@@ -65,3 +65,40 @@ export function canCreateListingToday(params: {
     throw new Error('Daily listing limit reached');
   }
 }
+
+export function planMarketplaceSettlement(params: {
+  listingQty: Decimal.Value;
+  fillQty: Decimal.Value;
+  price: Decimal.Value;
+  makerFeeBps: number;
+  takerFeeBps: number;
+}) {
+  const listingQty = toDecimal(params.listingQty);
+  const fillQty = toDecimal(params.fillQty);
+
+  if (fillQty.lte(0)) {
+    throw new Error('Fill quantity must be positive.');
+  }
+
+  if (fillQty.gt(listingQty)) {
+    throw new Error('Fill quantity exceeds listing quantity.');
+  }
+
+  const price = toDecimal(params.price);
+  const notional = price.mul(fillQty);
+  const fees = calculateMarketplaceFees({
+    notional,
+    makerFeeBps: params.makerFeeBps,
+    takerFeeBps: params.takerFeeBps
+  });
+
+  const remaining = listingQty.minus(fillQty);
+  return {
+    notional,
+    fees,
+    buyerDebit: notional.add(fees.takerFee),
+    sellerCredit: notional.sub(fees.makerFee),
+    remainingQty: remaining,
+    nextStatus: remaining.isZero() ? 'FILLED' : 'ACTIVE'
+  } as const;
+}

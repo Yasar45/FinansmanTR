@@ -10,7 +10,7 @@ import {
   PlotStatus
 } from '@prisma/client';
 import { loadEconomySettings } from '@/lib/economy';
-import { calculateMarketplaceFees, resolveOutputKind } from '@/lib/marketplace';
+import { planMarketplaceSettlement, resolveOutputKind } from '@/lib/marketplace';
 
 const tradeSchema = z.object({
   qty: z.number().positive().optional()
@@ -44,9 +44,10 @@ export async function POST(request: Request, { params }: { params: { listingId: 
   }
 
   const settings = await loadEconomySettings();
-  const notional = new Decimal(listing.priceTRY).mul(qtyDecimal);
-  const fees = calculateMarketplaceFees({
-    notional,
+  const settlement = planMarketplaceSettlement({
+    listingQty,
+    fillQty: qtyDecimal,
+    price: listing.priceTRY,
     makerFeeBps: settings.pricing.marketplace.makerFeeBps,
     takerFeeBps: settings.pricing.marketplace.takerFeeBps
   });
@@ -55,20 +56,20 @@ export async function POST(request: Request, { params }: { params: { listingId: 
   const sellerWallet = await prisma.wallet.findFirstOrThrow({ where: { userId: listing.sellerId } });
 
   const buyerBalance = new Decimal(buyerWallet.balance);
-  const buyerDebit = notional.add(fees.takerFee);
+  const buyerDebit = settlement.buyerDebit;
 
   if (buyerBalance.lt(buyerDebit)) {
     return NextResponse.json({ message: 'Yetersiz bakiye' }, { status: 422 });
   }
 
-  const isFullFill = qtyDecimal.eq(listingQty);
+  const isFullFill = settlement.remainingQty.isZero();
 
   const result = await prisma.$transaction(async (tx) => {
     const updatedListing = await tx.marketplaceListing.update({
       where: { id: listing.id },
       data: {
         status: isFullFill ? MarketplaceListingStatus.FILLED : MarketplaceListingStatus.ACTIVE,
-        qty: isFullFill ? 0 : listingQty.minus(qtyDecimal).toNumber()
+        qty: settlement.remainingQty.toNumber()
       }
     });
 
@@ -79,7 +80,7 @@ export async function POST(request: Request, { params }: { params: { listingId: 
         takerId: session.user.id,
         priceTRY: listing.priceTRY,
         qty: qtyDecimal.toNumber(),
-        feesTRY: fees.makerFee.toNumber()
+        feesTRY: settlement.fees.makerFee.toNumber()
       }
     });
 
@@ -89,7 +90,7 @@ export async function POST(request: Request, { params }: { params: { listingId: 
         takerId: session.user.id,
         priceTRY: listing.priceTRY,
         qty: qtyDecimal.toNumber(),
-        feesTRY: fees.takerFee.toNumber()
+        feesTRY: settlement.fees.takerFee.toNumber()
       }
     });
 
@@ -100,7 +101,12 @@ export async function POST(request: Request, { params }: { params: { listingId: 
 
     const sellerWalletUpdate = await tx.wallet.update({
       where: { id: sellerWallet.id },
-      data: { balance: new Decimal(sellerWallet.balance).add(notional).sub(fees.makerFee).toNumber() }
+      data: {
+        balance: new Decimal(sellerWallet.balance)
+          .add(settlement.notional)
+          .sub(settlement.fees.makerFee)
+          .toNumber()
+      }
     });
 
     await tx.walletTransaction.create({
@@ -112,8 +118,8 @@ export async function POST(request: Request, { params }: { params: { listingId: 
         metadata: {
           listingId: listing.id,
           qty: qtyDecimal.toNumber(),
-          makerFee: fees.makerFee.toNumber(),
-          takerFee: fees.takerFee.toNumber(),
+          makerFee: settlement.fees.makerFee.toNumber(),
+          takerFee: settlement.fees.takerFee.toNumber(),
           side: 'BUY'
         }
       }
@@ -123,7 +129,7 @@ export async function POST(request: Request, { params }: { params: { listingId: 
       data: {
         walletId: sellerWallet.id,
         type: WalletTransactionType.MARKET_TRADE,
-        amount: notional.sub(fees.makerFee).toNumber(),
+        amount: settlement.sellerCredit.toNumber(),
         balance: sellerWalletUpdate.balance,
         metadata: {
           listingId: listing.id,
@@ -135,32 +141,32 @@ export async function POST(request: Request, { params }: { params: { listingId: 
 
     if (listing.assetRef === 'OUTPUT' && listing.symbol) {
       const kind = resolveOutputKind(listing.symbol as any);
-      const currentInventory = await tx.outputInventory.findUnique({
-        where: { ownerId_kind: { ownerId: session.user.id, kind } }
-      });
-      if (currentInventory) {
-        const currentQty = new Decimal(currentInventory.qty);
-        const nextQty = currentQty.add(qtyDecimal);
-        const currentCost = new Decimal(currentInventory.avgCostTRY).mul(currentQty);
-        const nextAvg = nextQty.isZero()
-          ? new Decimal(0)
-          : currentCost.add(notional).div(nextQty);
-        await tx.outputInventory.update({
-          where: { id: currentInventory.id },
-          data: { qty: nextQty.toNumber(), avgCostTRY: nextAvg.toNumber() }
+        const currentInventory = await tx.outputInventory.findUnique({
+          where: { ownerId_kind: { ownerId: session.user.id, kind } }
         });
-      } else {
-        await tx.outputInventory.create({
-          data: {
-            ownerId: session.user.id,
-            kind,
-            qty: qtyDecimal.toNumber(),
-            unit: 'unit',
-            avgCostTRY: notional.div(qtyDecimal).toNumber()
-          }
-        });
+        if (currentInventory) {
+          const currentQty = new Decimal(currentInventory.qty);
+          const nextQty = currentQty.add(qtyDecimal);
+          const currentCost = new Decimal(currentInventory.avgCostTRY).mul(currentQty);
+          const nextAvg = nextQty.isZero()
+            ? new Decimal(0)
+            : currentCost.add(settlement.notional).div(nextQty);
+          await tx.outputInventory.update({
+            where: { id: currentInventory.id },
+            data: { qty: nextQty.toNumber(), avgCostTRY: nextAvg.toNumber() }
+          });
+        } else {
+          await tx.outputInventory.create({
+            data: {
+              ownerId: session.user.id,
+              kind,
+              qty: qtyDecimal.toNumber(),
+              unit: 'unit',
+              avgCostTRY: settlement.notional.div(qtyDecimal).toNumber()
+            }
+          });
+        }
       }
-    }
 
     if (listing.assetRef === 'ANIMAL' && listing.refId) {
       await tx.animal.update({
@@ -190,9 +196,9 @@ export async function POST(request: Request, { params }: { params: { listingId: 
         entity: `Order:${order.id}`,
         before: null,
         after: {
-          notional: notional.toNumber(),
-          makerFee: fees.makerFee.toNumber(),
-          takerFee: fees.takerFee.toNumber()
+          notional: settlement.notional.toNumber(),
+          makerFee: settlement.fees.makerFee.toNumber(),
+          takerFee: settlement.fees.takerFee.toNumber()
         }
       }
     });

@@ -21,7 +21,7 @@ varlıklarını yönetir, üretim çıktıları için sistem borsası veya P2P p
 - `PAYMENT_PROVIDER` (`MOCK`, `IYZICO` veya `PAYTR`)
 - Sağlayıcı anahtarları: `IYZICO_API_KEY`, `IYZICO_SECRET`, `PAYTR_MERCHANT_ID`, `PAYTR_MERCHANT_KEY`
 - S3 uyumlu depolama için `STORAGE_BUCKET_URL`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`
-- TRY cüzdan limiti ayarları: `PAYMENT_MAX_DEPOSITS_PER_HOUR`, `PAYMENT_MAX_DEPOSIT_TRY_PER_HOUR`
+- TRY cüzdan limiti ayarları: `PAYMENT_MAX_DEPOSITS_PER_MINUTE`, `PAYMENT_MAX_DEPOSITS_PER_HOUR`, `PAYMENT_MAX_DEPOSIT_TRY_PER_HOUR`
 
 ## Başlangıç
 
@@ -49,6 +49,7 @@ Saatlik üretim turları için Upstash/Redis gibi bir ortamda `src/server/jobs/t
 
 ```bash
 npm run lint
+npm run typecheck
 npm run test
 npx playwright test
 ```

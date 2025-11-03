@@ -77,7 +77,7 @@ const pricingControlsSchema = z
         floorPrices: z.record(z.string(), z.number()).default({}),
         ceilingPrices: z.record(z.string(), z.number()).default({}),
         relistCooldownHours: z.number().nonnegative().default(0),
-        dailyListingLimit: z.number().nonnegative().default(0)
+        dailyListingLimit: z.number().nonnegative().default(20)
       })
       .default({
         makerFeeBps: 0,
@@ -85,7 +85,7 @@ const pricingControlsSchema = z
         floorPrices: {},
         ceilingPrices: {},
         relistCooldownHours: 0,
-        dailyListingLimit: 0
+        dailyListingLimit: 20
       }),
     wallet: z
       .object({
@@ -110,7 +110,7 @@ const pricingControlsSchema = z
       floorPrices: {},
       ceilingPrices: {},
       relistCooldownHours: 0,
-      dailyListingLimit: 0
+      dailyListingLimit: 20
     },
     wallet: { depositFeeBps: 0, withdrawFeeBps: 0 },
     guardrails: { maxAnimalsPerUser: 0, maxPlotsPerUser: 0 },

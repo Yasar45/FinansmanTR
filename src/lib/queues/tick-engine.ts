@@ -208,6 +208,10 @@ export async function processUserHourlyTick(userId: string, tickAt: Date, settin
     const tickFactor = new Decimal(settings.tick.tickLengthMinutes).div(60);
 
     for (const animal of animals) {
+      if (animal.lastTickAt && new Date(animal.lastTickAt).getTime() >= tickAt.getTime()) {
+        logger.debug({ userId, animalId: animal.id, tickAt }, 'Skipping animal tick due to matching timestamp');
+        continue;
+      }
       const type = animal.type;
       const feedEntry = feedIndex.get(type.feedTypeId);
       const requiredFeed = toDecimal(type.feedPerTick).mul(toDecimal(animal.productivityMod));
@@ -353,6 +357,10 @@ export async function processUserHourlyTick(userId: string, tickAt: Date, settin
       plot.status = PlotStatus.ACTIVE;
 
       for (const crop of plot.crops) {
+        if (crop.lastTickAt && new Date(crop.lastTickAt).getTime() >= tickAt.getTime()) {
+          logger.debug({ userId, cropId: crop.id, tickAt }, 'Skipping crop tick due to matching timestamp');
+          continue;
+        }
         if (crop.status === CropStatus.SUSPENDED && plot.status === PlotStatus.SUSPENDED) {
           continue;
         }

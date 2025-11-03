@@ -4,6 +4,7 @@ import {
   assertPriceGuardrails,
   calculateMarketplaceFees,
   canCreateListingToday,
+  planMarketplaceSettlement,
   resolveOutputKind
 } from '@/lib/marketplace';
 
@@ -44,5 +45,30 @@ describe('marketplace helpers', () => {
 
   it('resolves output kind from symbol', () => {
     expect(resolveOutputKind('EGG_TRY' as any)).toBeDefined();
+  });
+});
+
+describe('marketplace settlement planning', () => {
+  const baseParams = {
+    listingQty: new Decimal(10),
+    price: new Decimal(25),
+    makerFeeBps: 20,
+    takerFeeBps: 40
+  };
+
+  it('marks listing as filled when remaining quantity is zero', () => {
+    const result = planMarketplaceSettlement({ ...baseParams, fillQty: new Decimal(10) });
+    expect(result.nextStatus).toBe('FILLED');
+    expect(result.remainingQty.toNumber()).toBeCloseTo(0);
+    expect(result.buyerDebit.toNumber()).toBeCloseTo(10 * 25 * 1.004);
+  });
+
+  it('supports partial fills and calculates maker/taker fees', () => {
+    const result = planMarketplaceSettlement({ ...baseParams, fillQty: new Decimal(4) });
+    expect(result.nextStatus).toBe('ACTIVE');
+    expect(result.remainingQty.toNumber()).toBeCloseTo(6);
+    expect(result.fees.makerFee.toNumber()).toBeCloseTo(4 * 25 * 0.002);
+    expect(result.fees.takerFee.toNumber()).toBeCloseTo(4 * 25 * 0.004);
+    expect(result.sellerCredit.toNumber()).toBeCloseTo(result.notional.sub(result.fees.makerFee).toNumber());
   });
 });

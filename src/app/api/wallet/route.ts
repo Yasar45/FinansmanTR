@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getPaymentProvider, type PaymentProviderName } from '@/lib/clients/payments';
 import { PaymentIntentStatus, PaymentProviderType, WalletTransactionType } from '@prisma/client';
 import { env } from '@/lib/env';
+import { assertLedgerConsistency } from '@/lib/wallet';
 
 const depositSchema = z.object({
   amount: z.number().positive(),
@@ -50,6 +51,17 @@ export async function POST(request: Request) {
   }
 
   const wallet = await prisma.wallet.findFirstOrThrow({ where: { userId: session.user.id } });
+
+  const minuteAgo = new Date(Date.now() - 60 * 1000);
+  const depositsLastMinute = await prisma.paymentIntent.count({
+    where: { userId: session.user.id, createdAt: { gte: minuteAgo } }
+  });
+  if (depositsLastMinute >= env.PAYMENT_MAX_DEPOSITS_PER_MINUTE) {
+    return NextResponse.json(
+      { message: 'Dakikalık para yatırma sınırına ulaşıldı.' },
+      { status: 429 }
+    );
+  }
 
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const recentDeposits = await prisma.paymentIntent.count({
@@ -138,7 +150,7 @@ export async function POST(request: Request) {
         data: { balance: newBalance }
       });
 
-      await tx.walletTransaction.create({
+      const ledgerEntry = await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
           type: WalletTransactionType.DEPOSIT,
@@ -151,6 +163,12 @@ export async function POST(request: Request) {
             status: capture.status
           }
         }
+      });
+
+      assertLedgerConsistency({
+        openingBalance: wallet.balance,
+        currentBalance: walletRecord.balance,
+        entries: [{ amount: ledgerEntry.amount, balance: ledgerEntry.balance }]
       });
 
       return walletRecord;

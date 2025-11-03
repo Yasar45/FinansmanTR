@@ -1,6 +1,9 @@
+import { performance } from 'node:perf_hooks';
+
 import { Card } from '@/components/ui/card';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { formatCurrency } from '@/lib/formatters';
+import { recordDashboardLoad } from '@/lib/performance';
 import { LocalizedLink } from '@/i18n/routing';
 import { getLocale, getTranslations } from 'next-intl/server';
 
@@ -12,6 +15,7 @@ interface MetricDefinition {
 }
 
 export default async function DashboardPage() {
+  const startedAt = performance.now();
   const locale = await getLocale();
   const t = await getTranslations('dashboard');
   const common = await getTranslations('common');
@@ -131,7 +135,7 @@ export default async function DashboardPage() {
     }
   ] as const;
 
-  return (
+  const view = (
     <div className="space-y-8">
       <section className="grid gap-6 md:grid-cols-3">
         {metrics.map((metric) => (
@@ -234,4 +238,8 @@ export default async function DashboardPage() {
       </Card>
     </div>
   );
+
+  const duration = performance.now() - startedAt;
+  recordDashboardLoad(duration);
+  return view;
 }
