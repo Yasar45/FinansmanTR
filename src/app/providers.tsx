@@ -5,15 +5,21 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { SessionProvider } from 'next-auth/react';
 import { useState } from 'react';
 import { ThemeProvider } from 'next-themes';
+import { NotificationProvider } from '@/components/notifications/notification-provider';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  locale: string;
+}
+
+export function Providers({ children, locale }: ProvidersProps) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
     <SessionProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <QueryClientProvider client={queryClient}>
-          {children}
+          <NotificationProvider locale={locale}>{children}</NotificationProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </ThemeProvider>

@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import { formatCurrency } from '@/lib/formatters';
 
 Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
@@ -10,11 +11,7 @@ export function toDecimal(value: MoneyInput): Decimal {
 }
 
 export function formatTRY(value: MoneyInput, locale: string = 'tr-TR'): string {
-  const decimal = toDecimal(value);
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: 'TRY'
-  }).format(Number(decimal.toFixed(2)));
+  return formatCurrency(toDecimal(value), locale);
 }
 
 export function add(a: MoneyInput, b: MoneyInput): Decimal {

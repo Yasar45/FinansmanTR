@@ -1,0 +1,23 @@
+{
+  "overviewTitle": "Hukuki Bilgilendirme",
+  "overviewIntro": "Çiftlik Pazar, kullanıcı verilerini KVKK ve uluslararası düzenlemelere uygun şekilde işler. Aşağıdaki dokümanlar kayıt, KYC ve işlem süreçlerindeki yükümlülüklerimizi açıklar.",
+  "viewDetails": "Detayları görüntüle →",
+  "documents": {
+    "terms": {
+      "title": "Kullanım koşulları",
+      "summary": "Platform hizmet kapsamı, kullanıcı yükümlülükleri ve fesih koşulları hakkında detayları inceleyin."
+    },
+    "privacy": {
+      "title": "KVKK & Gizlilik",
+      "summary": "Kişisel verilerinizin hangi amaçlarla işlendiğini, saklama sürelerini ve haklarınızı öğrenin."
+    },
+    "risk": {
+      "title": "Risk bildirimi",
+      "summary": "Sanal ekonomi deneyimindeki piyasa, operasyonel ve teknik riskleri gözden geçirin."
+    },
+    "cookies": {
+      "title": "Çerez politikası",
+      "summary": "Platform performansı ve güvenliği için kullanılan çerez türleri hakkında bilgi alın."
+    }
+  }
+}

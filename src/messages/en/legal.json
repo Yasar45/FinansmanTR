@@ -1,0 +1,23 @@
+{
+  "overviewTitle": "Legal information",
+  "overviewIntro": "FarmHub TR processes user data in accordance with KVKK and global regulations. The documents below outline our commitments across onboarding, KYC, and transactional flows.",
+  "viewDetails": "View details →",
+  "documents": {
+    "terms": {
+      "title": "Terms of use",
+      "summary": "Review platform scope, user responsibilities, and termination conditions."
+    },
+    "privacy": {
+      "title": "Privacy & KVKK",
+      "summary": "Understand how we collect and store personal data, along with your rights."
+    },
+    "risk": {
+      "title": "Risk disclosure",
+      "summary": "Explore the market, operational, and technical risks of the simulation economy."
+    },
+    "cookies": {
+      "title": "Cookie policy",
+      "summary": "Learn about the cookies used for platform performance and security."
+    }
+  }
+}

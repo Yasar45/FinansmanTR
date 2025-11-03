@@ -1,0 +1,57 @@
+{
+  "primaryNav": "Primary navigation",
+  "nav": {
+    "overview": "Overview",
+    "animals": "Animals",
+    "farming": "Greenhouses & Hydroponic",
+    "inventory": "Inventory",
+    "marketplace": "Marketplace",
+    "exchange": "Exchange",
+    "wallet": "Wallet",
+    "admin": "Admin"
+  },
+  "metrics": {
+    "walletBalance": "Wallet balance",
+    "walletBalanceHelp": "Your TRY balance after reserved amounts and pending settlements.",
+    "pendingHarvests": "Pending harvests",
+    "pendingHarvestsValue": "3 batches",
+    "pendingHarvestsHelp": "Harvest timelines compiled from your greenhouse and hydroponic plots.",
+    "marketVolume": "24h marketplace volume",
+    "marketVolumeHelp": "Total trade value you executed on the marketplace in the last 24 hours."
+  },
+  "metricHelpTitle": "About this metric",
+  "quickActionsTitle": "Quick actions",
+  "quickActionsDescription": "Use shortcuts for feeding animals, planting seeds, or selling produce.",
+  "quickActionsHelpTitle": "How does it work?",
+  "quickActionsHelpDescription": "Each shortcut takes you to the relevant management screen and guides you through the workflow.",
+  "actions": {
+    "buyFeed": "Purchase feed",
+    "buyFeedDescription": "Keep enough feed in stock so your animals stay productive.",
+    "addAnimal": "Add a new animal",
+    "addAnimalDescription": "Plan feed and housing costs before buying new animals.",
+    "plantSeeds": "Plant seeds",
+    "plantSeedsDescription": "Check seasonality when scheduling greenhouse planting.",
+    "exchangeSell": "Sell on exchange",
+    "exchangeSellDescription": "Execute instant sales with guaranteed system liquidity.",
+    "marketplaceList": "List on marketplace",
+    "marketplaceListDescription": "Publish flexible listings and manage bids in the P2P market.",
+    "walletHistory": "Wallet history",
+    "walletHistoryDescription": "Review TRY transactions in full compliance detail."
+  },
+  "onboardingTitle": "Onboarding checklist",
+  "onboardingDescription": "Unlock production and marketplace features as you complete each step.",
+  "onboardingHelpTitle": "Why it matters",
+  "onboardingHelpDescription": "Completing the checklist unlocks every economy rule and production engine capability.",
+  "checklist": {
+    "buyAnimal": "Purchase your first animal",
+    "buyAnimalDescription": "Buy your first animal and plan its feed requirements.",
+    "buyFeed": "Secure feed reserves",
+    "buyFeedDescription": "Purchase appropriate feed and build up inventory.",
+    "harvest": "Complete your first harvest",
+    "harvestDescription": "Harvest your first crop and move it into inventory.",
+    "sellExchange": "Sell on the exchange",
+    "sellExchangeDescription": "Sell your production through the system exchange.",
+    "listMarketplace": "List on the marketplace",
+    "listMarketplaceDescription": "Create your first P2P marketplace listing."
+  }
+}

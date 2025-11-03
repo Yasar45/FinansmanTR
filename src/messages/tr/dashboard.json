@@ -1,0 +1,57 @@
+{
+  "primaryNav": "Birincil gezinme",
+  "nav": {
+    "overview": "Özet",
+    "animals": "Hayvanlar",
+    "farming": "Sera & Hidroponik",
+    "inventory": "Envanter",
+    "marketplace": "Pazar Yeri",
+    "exchange": "Borsa",
+    "wallet": "Cüzdan",
+    "admin": "Yönetim"
+  },
+  "metrics": {
+    "walletBalance": "Cüzdan bakiyesi",
+    "walletBalanceHelp": "TRY bakiyeniz, açık işlemler ve rezerve tutarlar düşülerek hesaplanır.",
+    "pendingHarvests": "Bekleyen hasatlar",
+    "pendingHarvestsValue": "3 parti",
+    "pendingHarvestsHelp": "Hasat takvimleri sera ve hidroponik varlıklarınızdan derlenir.",
+    "marketVolume": "Son 24s pazar işlemleri",
+    "marketVolumeHelp": "Son 24 saat içinde pazarda yaptığınız işlem toplamını gösterir."
+  },
+  "metricHelpTitle": "Bu metrik hakkında",
+  "quickActionsTitle": "Hızlı aksiyonlar",
+  "quickActionsDescription": "Hayvan besleme, tohum ekme veya ürün satışı için hızlı bağlantıları kullanın.",
+  "quickActionsHelpTitle": "Nasıl kullanılır?",
+  "quickActionsHelpDescription": "Her aksiyon sizi ilgili yönetim ekranına götürür ve işlem sürecini adım adım yönlendirir.",
+  "actions": {
+    "buyFeed": "Yem satın al",
+    "buyFeedDescription": "Hayvanlarınızın üretken kalması için yeterli yem stoğunu sağlayın.",
+    "addAnimal": "Yeni hayvan ekle",
+    "addAnimalDescription": "Yeni hayvan satın alırken yem ve barınma maliyetlerini göz önünde bulundurun.",
+    "plantSeeds": "Seraya tohum ek",
+    "plantSeedsDescription": "Seralarınız için tohum planlarken mevsimselliği kontrol edin.",
+    "exchangeSell": "Borsada sat",
+    "exchangeSellDescription": "Likidite garantili sistem fiyatlarıyla anında satış yapın.",
+    "marketplaceList": "Pazara ilan ver",
+    "marketplaceListDescription": "P2P pazarda esnek fiyatlarla ilan verin ve teklifleri yönetin.",
+    "walletHistory": "Cüzdan geçmişi",
+    "walletHistoryDescription": "TRY hareketlerinizi uyum amaçlı detaylı olarak görüntüleyin."
+  },
+  "onboardingTitle": "Başlangıç kontrol listesi",
+  "onboardingDescription": "Tamamladıkça üretim motoru ve pazar özellikleri otomatik olarak açılır.",
+  "onboardingHelpTitle": "Neden önemli?",
+  "onboardingHelpDescription": "Kontrol listesini tamamlamak, ekonomi kurallarının ve üretim motorunun tüm özelliklerinin kilidini açar.",
+  "checklist": {
+    "buyAnimal": "İlk hayvanınızı satın alın",
+    "buyAnimalDescription": "İlk hayvanınızı satın alın ve yem gereksinimlerini planlayın.",
+    "buyFeed": "Yem stoğu oluşturun",
+    "buyFeedDescription": "Hayvanlarınıza uygun yem satın alın ve stoklayın.",
+    "harvest": "İlk hasadı tamamlayın",
+    "harvestDescription": "İlk ürününüzü hasat edin ve envantere taşıyın.",
+    "sellExchange": "Borsada satış yapın",
+    "sellExchangeDescription": "Üretiminizi sistem borsasında satın.",
+    "listMarketplace": "Pazara ilan verin",
+    "listMarketplaceDescription": "P2P pazarda ilk ilanınızı oluşturun."
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "appName": "FarmHub TR",
+  "skipToContent": "Skip to content",
+  "signOut": "Sign out",
+  "learnMore": "Learn more",
+  "goAction": "Go now",
+  "completed": "Completed",
+  "startTask": "Start step",
+  "close": "Close",
+  "authSecurityNote": "Your data is protected under KVKK.",
+  "notifications": {
+    "title": "New notification",
+    "productionSummary": "Your production summary is ready. Review revenues and costs.",
+    "plotSuspended": "One of your plots was paused because your balance is insufficient.",
+    "withdrawalApproved": "Your withdrawal request was approved.",
+    "withdrawalRejected": "Your withdrawal request was rejected. Check the details.",
+    "generic": "You have a new notification.",
+    "dismiss": "Dismiss",
+    "open": "Open notifications",
+    "panelTitle": "Notifications",
+    "markAllRead": "Mark all as read",
+    "loading": "Loading notifications...",
+    "empty": "You have no notifications yet.",
+    "markRead": "Mark as read",
+    "close": "Close",
+    "labels": {
+      "PRODUCTION_SUMMARY": "Production summary",
+      "PLOT_SUSPENDED": "Plot suspended",
+      "WITHDRAWAL_APPROVED": "Withdrawal approved",
+      "WITHDRAWAL_REJECTED": "Withdrawal rejected"
+    }
+  },
+  "landing": {
+    "heroTitle": "Welcome to Türkiye's digital farm economy.",
+    "heroSubtitle": "Grow animals, cultivate in greenhouses, and sell outputs to the exchange or P2P marketplace. Manage everything with a secure TRY wallet, KYC compliance, and a modern interface.",
+    "getStarted": "Get started",
+    "howItWorks": "How it works",
+    "statAssets": "Asset categories",
+    "statTicks": "Hourly production ticks",
+    "statWallet": "TRY wallet",
+    "doubleEntry": "Double-entry ledger",
+    "statMarketplace": "Marketplace",
+    "highlightProduction": {
+      "title": "Realistic production loops",
+      "description": "Model animal and crop production with hourly, daily, and monthly ticks. Manage feed shortages and seasonality impacts."
+    },
+    "highlightWallet": {
+      "title": "TRY wallet & KYC",
+      "description": "Deposit, withdraw, and audit every transaction with compliance logs and KYC-aware restrictions."
+    },
+    "highlightAdmin": {
+      "title": "Operator economy controls",
+      "description": "Fine-tune prices, spreads, fees, and risk toggles from an all-in-one admin panel."
+    }
+  },
+  "help": {
+    "title": "Help Center",
+    "intro": "Browse frequently asked questions and guides to make the most of FarmHub TR.",
+    "contactPrefix": "Need more support? Contact ",
+    "contactSuffix": ".",
+    "faqHeading": "Frequently asked questions",
+    "faqs": {
+      "howWorks": {
+        "question": "How does FarmHub TR work?",
+        "answer": "It simulates a real farm economy. Acquire assets, keep them fed through production ticks, and sell outputs for TRY."
+      },
+      "wallet": {
+        "question": "Is the TRY wallet secure?",
+        "answer": "Double-entry bookkeeping, audit trails, and compliance controls are enforced. Withdrawals require verified KYC."
+      },
+      "production": {
+        "question": "How do production ticks operate?",
+        "answer": "Hourly BullMQ jobs consume feed, generate outputs, and apply maintenance costs across animals and crops."
+      }
+    }
+  }
+}

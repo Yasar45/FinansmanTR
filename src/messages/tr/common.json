@@ -1,0 +1,77 @@
+{
+  "appName": "Çiftlik Pazar · FarmHub TR",
+  "skipToContent": "İçeriğe atla",
+  "signOut": "Çıkış",
+  "learnMore": "Detayları öğren",
+  "goAction": "Hemen git",
+  "completed": "Tamamlandı",
+  "startTask": "Adımı başlat",
+  "close": "Kapat",
+  "authSecurityNote": "Verileriniz KVKK kapsamında korunur.",
+  "notifications": {
+    "title": "Yeni bildirim",
+    "productionSummary": "Üretim özeti hazır. Gelir ve giderlerinizi inceleyin.",
+    "plotSuspended": "Bir seranız bakiyeniz yetersiz olduğu için duraklatıldı.",
+    "withdrawalApproved": "Para çekme talebiniz onaylandı.",
+    "withdrawalRejected": "Para çekme talebiniz reddedildi. Ayrıntıları kontrol edin.",
+    "generic": "Yeni bir bildiriminiz var.",
+    "dismiss": "Kapat",
+    "open": "Bildirimleri aç",
+    "panelTitle": "Bildirimler",
+    "markAllRead": "Tümünü okundu işaretle",
+    "loading": "Bildirimler yükleniyor...",
+    "empty": "Henüz bildiriminiz yok.",
+    "markRead": "Okundu işaretle",
+    "close": "Kapat",
+    "labels": {
+      "PRODUCTION_SUMMARY": "Üretim özeti",
+      "PLOT_SUSPENDED": "Sera duraklatıldı",
+      "WITHDRAWAL_APPROVED": "Çekim onaylandı",
+      "WITHDRAWAL_REJECTED": "Çekim reddedildi"
+    }
+  },
+  "landing": {
+    "heroTitle": "Türkiye'nin dijital çiftlik ekonomisine hoş geldiniz.",
+    "heroSubtitle": "Hayvanlarınızı büyütün, seralarda üretim yapın, ürünlerinizi sistem borsasına veya P2P pazara satın. TRY cüzdanı, KYC uyumluluğu ve modern arayüz ile güvenle yönetin.",
+    "getStarted": "Başla",
+    "howItWorks": "Nasıl çalışır?",
+    "statAssets": "Varlık kategorileri",
+    "statTicks": "Saatlik üretim turları",
+    "statWallet": "TRY cüzdanı",
+    "doubleEntry": "Çift yönlü kayıt",
+    "statMarketplace": "Pazar yeri",
+    "highlightProduction": {
+      "title": "Gerçekçi üretim döngüsü",
+      "description": "Hayvan ve bitki üretimini saatlik, günlük ve aylık turlarla modelleyin. Besleme eksikliği ve mevsimsellik etkilerini yönetin."
+    },
+    "highlightWallet": {
+      "title": "TRY cüzdanı ve KYC",
+      "description": "Fon ekleme, çekme, işlem kayıtları ve uyum logları. KYC durumuna göre otomatik kısıtlamalar."
+    },
+    "highlightAdmin": {
+      "title": "Yönetici ekonomisi",
+      "description": "Fiyatlar, spreadler, ücretler ve risk kontrolleri için kapsamlı yönetici paneli."
+    }
+  },
+  "help": {
+    "title": "Yardım Merkezi",
+    "intro": "Çiftlik Pazar deneyiminizi en üst düzeye çıkarmak için sık sorulan soruları ve rehberleri inceleyin.",
+    "contactPrefix": "Daha fazla destek için ",
+    "contactSuffix": " adresiyle iletişime geçin.",
+    "faqHeading": "Sıkça sorulan sorular",
+    "faqs": {
+      "howWorks": {
+        "question": "Çiftlik Pazar nasıl çalışır?",
+        "answer": "Gerçek hayvan ve sera ekonomisini simüle eder. Kullanıcılar varlık satın alır, üretim turlarında besleme yapar ve çıktıları TRY karşılığında satar."
+      },
+      "wallet": {
+        "question": "TRY cüzdanı güvenli mi?",
+        "answer": "Çift yönlü kayıt, işlem günlükleri ve uyum kontrolleri uygulanır. KYC doğrulanmadan çekim yapılmaz."
+      },
+      "production": {
+        "question": "Üretim turları nasıl işler?",
+        "answer": "BullMQ ile saatlik işler çalışır. Hayvanlar yem tüketir, ürün üretir. Seralar bakım maliyetlerine göre gelir sağlar."
+      }
+    }
+  }
+}
