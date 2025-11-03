@@ -44,6 +44,24 @@ const tickConfigSchema = z
     seasonality: {}
   });
 
+const oracleBoundsSchema = z
+  .object({
+    min: z.number().nonnegative(),
+    max: z.number().positive()
+  })
+  .refine((value) => value.max > value.min, {
+    message: 'Maksimum değer minimum değerden büyük olmalıdır.'
+  });
+
+const oracleConfigSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    provider: z.enum(['MOCK', 'MANUAL']).default('MOCK'),
+    mockOffsets: z.record(z.string(), z.number()).default({}),
+    bounds: z.record(z.string(), oracleBoundsSchema).default({})
+  })
+  .default({ enabled: false, provider: 'MOCK', mockOffsets: {}, bounds: {} });
+
 const pricingControlsSchema = z
   .object({
     exchange: z
@@ -81,7 +99,8 @@ const pricingControlsSchema = z
         maxPlotsPerUser: z.number().nonnegative().default(0)
       })
       .default({ maxAnimalsPerUser: 0, maxPlotsPerUser: 0 }),
-    rentEscalationBps: z.number().nonnegative().default(0)
+    rentEscalationBps: z.number().nonnegative().default(0),
+    oracle: oracleConfigSchema
   })
   .default({
     exchange: { defaultSpreadBps: 0, tradeFeeBps: 0 },
@@ -95,7 +114,8 @@ const pricingControlsSchema = z
     },
     wallet: { depositFeeBps: 0, withdrawFeeBps: 0 },
     guardrails: { maxAnimalsPerUser: 0, maxPlotsPerUser: 0 },
-    rentEscalationBps: 0
+    rentEscalationBps: 0,
+    oracle: { enabled: false, provider: 'MOCK', mockOffsets: {}, bounds: {} }
   });
 
 const eventsSchema = z
@@ -120,6 +140,7 @@ const eventsSchema = z
 
 export type TickConfig = z.infer<typeof tickConfigSchema>;
 export type PricingControls = z.infer<typeof pricingControlsSchema>;
+export type OraclePricingConfig = z.infer<typeof oracleConfigSchema>;
 export type EconomyEvents = z.infer<typeof eventsSchema>;
 
 export interface EconomySettings {

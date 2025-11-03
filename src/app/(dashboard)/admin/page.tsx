@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { hasAbility } from '@/lib/rbac';
 import { WalletTransactionType } from '@prisma/client';
 import { hourlyQueue, dailyQueue, hourlyWorker, dailyWorker } from '@/lib/queues/tick-engine';
+import { ensureDailyOracleCron } from '@/lib/queues/pricing-oracle';
 import { EconomySettingsForm } from './_components/economy-settings-form';
 import { KycReviewQueue } from './_components/kyc-review-queue';
 import { WithdrawalQueue } from './_components/withdrawal-queue';
@@ -18,12 +19,15 @@ import { CatalogManager } from './_components/catalog-manager';
 import { UserAdminPanel } from './_components/user-admin-panel';
 import { MarketplaceGuardrails } from './_components/marketplace-guardrails';
 import { AuditLogPanel } from './_components/audit-log-panel';
+import { OracleManager } from './_components/oracle-manager';
 
 export default async function AdminPage() {
   const session = await auth();
   if (!session?.user || !['ADMIN', 'MOD'].includes(session.user.role)) {
     redirect('/dashboard');
   }
+
+  await ensureDailyOracleCron();
 
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -35,6 +39,7 @@ export default async function AdminPage() {
     pendingWithdrawals,
     recentIntents,
     systemPrices,
+    oracleReferences,
     animalTypes,
     cropTypes,
     feedTypes,
@@ -71,6 +76,7 @@ export default async function AdminPage() {
       take: 5
     }),
     prisma.systemPrice.findMany({ orderBy: { symbol: 'asc' } }),
+    prisma.oraclePriceReference.findMany({ orderBy: { effectiveDate: 'desc' }, take: 10 }),
     prisma.animalType.findMany({ include: { feedType: true }, orderBy: { name: 'asc' } }),
     prisma.cropType.findMany({ orderBy: { name: 'asc' } }),
     prisma.feedType.findMany({ orderBy: { name: 'asc' } }),
@@ -266,6 +272,14 @@ export default async function AdminPage() {
     burnTotal
   };
 
+  const oracleReferenceRows = oracleReferences.map((reference) => ({
+    id: reference.id,
+    symbol: reference.symbol,
+    midPriceTRY: Number(reference.midPriceTRY),
+    effectiveDate: reference.effectiveDate.toISOString(),
+    source: reference.source
+  }));
+
   return (
     <div className="space-y-10">
       <AdminBreadcrumbs />
@@ -286,6 +300,7 @@ export default async function AdminPage() {
             source: price.source
           }))}
         />
+        <OracleManager config={settings.pricing.oracle} references={oracleReferenceRows} />
         <EconomySettingsForm initialSettings={settings} />
         <TickControls queues={queueStates} />
       </section>

@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth';
 import type { Ability } from '@/lib/auth';
 import { hasAbility } from '@/lib/rbac';
 import { prisma } from '@/lib/prisma';
+import { loadEconomySettings } from '@/lib/economy';
 import {
   dailyQueue,
   hourlyQueue,
@@ -14,7 +15,10 @@ import {
   hourlyWorker,
   runManualTickForUser
 } from '@/lib/queues/tick-engine';
-import { BlacklistType } from '@prisma/client';
+import { ensureDailyOracleCron } from '@/lib/queues/pricing-oracle';
+import { runPricingOracle } from '@/lib/oracle';
+import { parseOracleUpload } from '@/lib/oracle-utils';
+import { BlacklistType, OracleReferenceSource } from '@prisma/client';
 
 interface RequireOptions {
   abilities?: Ability[];
@@ -46,6 +50,24 @@ const systemPriceSchema = z.object({
   symbol: z.string().min(2),
   midPriceTRY: z.number().positive(),
   spreadBps: z.number().int().min(0)
+});
+
+const oracleBoundsSchema = z.object({
+  min: z.number().nonnegative(),
+  max: z.number().positive()
+});
+
+const oracleSettingsSchema = z.object({
+  enabled: z.boolean(),
+  provider: z.enum(['MOCK', 'MANUAL']),
+  mockOffsets: z.record(z.string(), z.number()).default({}),
+  bounds: z.record(z.string(), oracleBoundsSchema).default({})
+});
+
+const oracleUploadSchema = z.object({
+  payload: z.string().min(1),
+  source: z.enum(['MANUAL', 'CSV']).default('MANUAL'),
+  effectiveDate: z.string().optional()
 });
 
 const economySettingsSchema = z.object({
@@ -123,9 +145,101 @@ export async function updateSystemPriceAction(input: z.infer<typeof systemPriceS
   return price;
 }
 
+export async function updateOracleSettingsAction(input: z.infer<typeof oracleSettingsSchema>) {
+  const actor = await requireAdmin({ abilities: ['manage:pricing'] });
+  const payload = oracleSettingsSchema.parse(input);
+
+  Object.entries(payload.bounds).forEach(([symbol, bound]) => {
+    if (bound.max <= bound.min) {
+      throw new Error(`${symbol} için maksimum değer minimumdan büyük olmalıdır.`);
+    }
+  });
+
+  const settings = await loadEconomySettings();
+  const controls = { ...settings.pricing, oracle: payload };
+
+  await prisma.$transaction([
+    prisma.economyRule.upsert({
+      where: { key: 'pricing.controls' },
+      update: { value: controls },
+      create: { key: 'pricing.controls', value: controls }
+    }),
+    prisma.auditLog.create({
+      data: {
+        actorId: actor.id,
+        action: 'UPDATE_ORACLE_SETTINGS',
+        entity: 'EconomyRule',
+        before: settings.pricing.oracle,
+        after: payload
+      }
+    })
+  ]);
+
+  await ensureDailyOracleCron();
+  revalidatePath('/(dashboard)/admin');
+  return payload;
+}
+
+export async function importOracleReferencesAction(input: z.infer<typeof oracleUploadSchema>) {
+  const actor = await requireAdmin({ abilities: ['manage:pricing'] });
+  const payload = oracleUploadSchema.parse(input);
+  const entries = parseOracleUpload(payload.payload);
+  if (entries.length === 0) {
+    throw new Error('Yüklenecek veri bulunamadı.');
+  }
+
+  const effectiveDate = payload.effectiveDate ? new Date(payload.effectiveDate) : new Date();
+  if (Number.isNaN(effectiveDate.getTime())) {
+    throw new Error('Geçersiz tarih.');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const entry of entries) {
+      await tx.oraclePriceReference.create({
+        data: {
+          symbol: entry.symbol,
+          midPriceTRY: entry.midPriceTRY,
+          effectiveDate,
+          source:
+            payload.source === 'CSV' ? OracleReferenceSource.CSV : OracleReferenceSource.MANUAL,
+          payload: { uploadedBy: actor.email },
+          createdById: actor.id
+        }
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        actorId: actor.id,
+        action: 'IMPORT_ORACLE_REFERENCES',
+        entity: 'OraclePriceReference',
+        before: null,
+        after: {
+          effectiveDate: effectiveDate.toISOString(),
+          source: payload.source,
+          entries
+        }
+      }
+    });
+  });
+
+  revalidatePath('/(dashboard)/admin');
+  return { count: entries.length };
+}
+
+export async function runOracleNowAction() {
+  const actor = await requireAdmin({ abilities: ['manage:pricing'] });
+  await ensureDailyOracleCron();
+  const result = await runPricingOracle({ triggeredBy: actor.id, reason: 'MANUAL' });
+  revalidatePath('/(dashboard)/admin');
+  return result;
+}
+
 export async function updateEconomySettingsAction(input: z.infer<typeof economySettingsSchema>) {
   const actor = await requireAdmin({ abilities: ['manage:pricing'] });
   const payload = economySettingsSchema.parse(input);
+  const current = await loadEconomySettings();
+  const pricing = { ...payload.pricing, oracle: current.pricing.oracle };
 
   await prisma.$transaction([
     prisma.economyRule.upsert({
@@ -135,8 +249,8 @@ export async function updateEconomySettingsAction(input: z.infer<typeof economyS
     }),
     prisma.economyRule.upsert({
       where: { key: 'pricing.controls' },
-      update: { value: payload.pricing },
-      create: { key: 'pricing.controls', value: payload.pricing }
+      update: { value: pricing },
+      create: { key: 'pricing.controls', value: pricing }
     }),
     prisma.economyRule.upsert({
       where: { key: 'events.state' },
@@ -149,7 +263,7 @@ export async function updateEconomySettingsAction(input: z.infer<typeof economyS
         action: 'UPDATE_ECONOMY_SETTINGS',
         entity: 'EconomyRule',
         before: null,
-        after: payload
+        after: { ...payload, pricing }
       }
     })
   ]);

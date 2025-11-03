@@ -316,6 +316,17 @@ async function main() {
     });
   }
 
+  await prisma.oraclePriceReference.createMany({
+    data: systemSymbols.map((quote) => ({
+      symbol: quote.symbol,
+      midPriceTRY: quote.midPriceTRY,
+      effectiveDate: new Date(),
+      source: 'MOCK',
+      payload: { seed: true }
+    })),
+    skipDuplicates: true
+  });
+
   await prisma.economyRule.upsert({
     where: { key: 'tick.config' },
     update: {
