@@ -27,11 +27,13 @@ type EconomyFormState = {
   ceilingPrices: string;
   relistCooldownHours: string;
   exchangeSpreadBps: string;
+  exchangeTradeFeeBps: string;
   depositFeeBps: string;
   withdrawFeeBps: string;
   maxAnimalsPerUser: string;
   maxPlotsPerUser: string;
   rentEscalationBps: string;
+  dailyListingLimit: string;
   diseaseKeys: string;
   droughtSeverity: string;
   diseaseEventActive: boolean;
@@ -54,7 +56,9 @@ export function EconomySettingsForm({ initialSettings }: Props) {
     floorPrices: JSON.stringify(initialSettings.pricing.marketplace.floorPrices, null, 2),
     ceilingPrices: JSON.stringify(initialSettings.pricing.marketplace.ceilingPrices, null, 2),
     relistCooldownHours: initialSettings.pricing.marketplace.relistCooldownHours.toString(),
+    dailyListingLimit: initialSettings.pricing.marketplace.dailyListingLimit.toString(),
     exchangeSpreadBps: initialSettings.pricing.exchange.defaultSpreadBps.toString(),
+    exchangeTradeFeeBps: initialSettings.pricing.exchange.tradeFeeBps.toString(),
     depositFeeBps: initialSettings.pricing.wallet.depositFeeBps.toString(),
     withdrawFeeBps: initialSettings.pricing.wallet.withdrawFeeBps.toString(),
     maxAnimalsPerUser: initialSettings.pricing.guardrails.maxAnimalsPerUser.toString(),
@@ -100,13 +104,17 @@ export function EconomySettingsForm({ initialSettings }: Props) {
               seasonality: JSON.parse(form.seasonality || '{}')
             },
             pricing: {
-              exchange: { defaultSpreadBps: Number(form.exchangeSpreadBps) },
+              exchange: {
+                defaultSpreadBps: Number(form.exchangeSpreadBps),
+                tradeFeeBps: Number(form.exchangeTradeFeeBps)
+              },
               marketplace: {
                 makerFeeBps: Number(form.makerFeeBps),
                 takerFeeBps: Number(form.takerFeeBps),
                 floorPrices: JSON.parse(form.floorPrices || '{}'),
                 ceilingPrices: JSON.parse(form.ceilingPrices || '{}'),
-                relistCooldownHours: Number(form.relistCooldownHours)
+                relistCooldownHours: Number(form.relistCooldownHours),
+                dailyListingLimit: Number(form.dailyListingLimit)
               },
               wallet: {
                 depositFeeBps: Number(form.depositFeeBps),
@@ -192,6 +200,11 @@ export function EconomySettingsForm({ initialSettings }: Props) {
           onChange={(value) => handleChange('exchangeSpreadBps', value)}
         />
         <Field
+          label="Exchange Ücreti (bps)"
+          value={form.exchangeTradeFeeBps}
+          onChange={(value) => handleChange('exchangeTradeFeeBps', value)}
+        />
+        <Field
           label="Rent Eskalasyonu (bps)"
           value={form.rentEscalationBps}
           onChange={(value) => handleChange('rentEscalationBps', value)}
@@ -251,6 +264,11 @@ export function EconomySettingsForm({ initialSettings }: Props) {
           label="Relist Bekleme (saat)"
           value={form.relistCooldownHours}
           onChange={(value) => handleChange('relistCooldownHours', value)}
+        />
+        <Field
+          label="Günlük İlan Limiti"
+          value={form.dailyListingLimit}
+          onChange={(value) => handleChange('dailyListingLimit', value)}
         />
       </div>
       <div className="flex items-center justify-between gap-3">

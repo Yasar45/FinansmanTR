@@ -277,41 +277,43 @@ async function main() {
     });
   }
 
-  await prisma.marketplaceListing.upsert({
-    where: { refId: 'output-eggs' },
-    update: {
-      sellerId: user.id,
-      priceTRY: 4200,
-      qty: 200,
-      status: MarketplaceListingStatus.ACTIVE,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 4)
-    },
-    create: {
+  await prisma.marketplaceListing.deleteMany({ where: { refId: 'output-eggs', assetRef: 'OUTPUT' } });
+  await prisma.marketplaceListing.create({
+    data: {
       sellerId: user.id,
       assetRef: 'OUTPUT',
       refId: 'output-eggs',
-      priceTRY: 4200,
+      symbol: 'EGG_TRY',
+      priceTRY: 21.0,
       qty: 200,
+      metadata: { unit: 'adet' },
       status: MarketplaceListingStatus.ACTIVE,
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 4)
     }
   });
 
-  await prisma.systemPrice.upsert({
-    where: { symbol: 'EGG_TRY' },
-    update: { buyTRY: 13.2, sellTRY: 12.9, spreadBps: 30 },
-    create: { symbol: 'EGG_TRY', buyTRY: 13.2, sellTRY: 12.9, spreadBps: 30 }
-  });
-  await prisma.systemPrice.upsert({
-    where: { symbol: 'MILK_TRY' },
-    update: { buyTRY: 15.5, sellTRY: 15.1, spreadBps: 40 },
-    create: { symbol: 'MILK_TRY', buyTRY: 15.5, sellTRY: 15.1, spreadBps: 40 }
-  });
-  await prisma.systemPrice.upsert({
-    where: { symbol: 'TOMATO_TRY' },
-    update: { buyTRY: 22.6, sellTRY: 21.9, spreadBps: 70 },
-    create: { symbol: 'TOMATO_TRY', buyTRY: 22.6, sellTRY: 21.9, spreadBps: 70 }
-  });
+  const systemSymbols = [
+    { symbol: 'EGG_TRY', midPriceTRY: 12.0, spreadBps: 30 },
+    { symbol: 'MILK_TRY', midPriceTRY: 14.8, spreadBps: 40 },
+    { symbol: 'HONEY_TRY', midPriceTRY: 85.0, spreadBps: 55 },
+    { symbol: 'TOMATO_TRY', midPriceTRY: 20.4, spreadBps: 70 },
+    { symbol: 'PEPPER_TRY', midPriceTRY: 18.5, spreadBps: 65 },
+    { symbol: 'EGGPLANT_TRY', midPriceTRY: 16.2, spreadBps: 60 },
+    { symbol: 'LETTUCE_TRY', midPriceTRY: 10.4, spreadBps: 45 }
+  ];
+
+  for (const quote of systemSymbols) {
+    await prisma.systemPrice.upsert({
+      where: { symbol: quote.symbol },
+      update: { midPriceTRY: quote.midPriceTRY, spreadBps: quote.spreadBps },
+      create: {
+        symbol: quote.symbol,
+        midPriceTRY: quote.midPriceTRY,
+        spreadBps: quote.spreadBps,
+        source: 'ADMIN'
+      }
+    });
+  }
 
   await prisma.economyRule.upsert({
     where: { key: 'tick.config' },

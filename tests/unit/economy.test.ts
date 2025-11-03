@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildExchangePreview,
   computeExchangeQuotes,
   droughtMultiplier,
   projectROI,
@@ -22,13 +23,14 @@ const baseSettings: EconomySettings = {
     }
   },
   pricing: {
-    exchange: { defaultSpreadBps: 40 },
+    exchange: { defaultSpreadBps: 40, tradeFeeBps: 15 },
     marketplace: {
       makerFeeBps: 20,
       takerFeeBps: 40,
       floorPrices: { EGG: 8 },
       ceilingPrices: { EGG: 30 },
-      relistCooldownHours: 6
+      relistCooldownHours: 6,
+      dailyListingLimit: 5
     },
     wallet: { depositFeeBps: 15, withdrawFeeBps: 25 },
     guardrails: { maxAnimalsPerUser: 50, maxPlotsPerUser: 10 },
@@ -79,5 +81,16 @@ describe('economy formulas', () => {
       true
     );
     expect(neutral.toNumber()).toBeCloseTo(1);
+  });
+});
+
+describe('exchange preview', () => {
+  it('calculates price, fees and effective rate with zero slippage', () => {
+    const preview = buildExchangePreview({ mid: 100, spreadBps: 50, side: 'SELL', qty: 10, feeBps: 15 });
+    expect(preview.price.toNumber()).toBeCloseTo(95); // sell side uses bid
+    expect(preview.notional.toNumber()).toBeCloseTo(950);
+    expect(preview.fee.toNumber()).toBeCloseTo(1.425);
+    expect(preview.effectiveRate.toNumber()).toBeCloseTo(94.8575);
+    expect(preview.slippage.toNumber()).toBe(0);
   });
 });

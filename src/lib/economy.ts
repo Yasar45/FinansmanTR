@@ -3,6 +3,18 @@ import Decimal from 'decimal.js';
 import { z } from 'zod';
 import { toDecimal } from '@/lib/money';
 
+export const EXCHANGE_SYMBOLS = [
+  'EGG_TRY',
+  'MILK_TRY',
+  'HONEY_TRY',
+  'TOMATO_TRY',
+  'PEPPER_TRY',
+  'EGGPLANT_TRY',
+  'LETTUCE_TRY'
+] as const;
+
+export type ExchangeSymbol = (typeof EXCHANGE_SYMBOLS)[number];
+
 const tickConfigSchema = z
   .object({
     tickLengthMinutes: z.number().positive().default(60),
@@ -36,18 +48,27 @@ const pricingControlsSchema = z
   .object({
     exchange: z
       .object({
-        defaultSpreadBps: z.number().nonnegative().default(0)
+        defaultSpreadBps: z.number().nonnegative().default(0),
+        tradeFeeBps: z.number().nonnegative().default(0)
       })
-      .default({ defaultSpreadBps: 0 }),
+      .default({ defaultSpreadBps: 0, tradeFeeBps: 0 }),
     marketplace: z
       .object({
         makerFeeBps: z.number().nonnegative().default(0),
         takerFeeBps: z.number().nonnegative().default(0),
         floorPrices: z.record(z.string(), z.number()).default({}),
         ceilingPrices: z.record(z.string(), z.number()).default({}),
-        relistCooldownHours: z.number().nonnegative().default(0)
+        relistCooldownHours: z.number().nonnegative().default(0),
+        dailyListingLimit: z.number().nonnegative().default(0)
       })
-      .default({ makerFeeBps: 0, takerFeeBps: 0, floorPrices: {}, ceilingPrices: {}, relistCooldownHours: 0 }),
+      .default({
+        makerFeeBps: 0,
+        takerFeeBps: 0,
+        floorPrices: {},
+        ceilingPrices: {},
+        relistCooldownHours: 0,
+        dailyListingLimit: 0
+      }),
     wallet: z
       .object({
         depositFeeBps: z.number().nonnegative().default(0),
@@ -63,8 +84,15 @@ const pricingControlsSchema = z
     rentEscalationBps: z.number().nonnegative().default(0)
   })
   .default({
-    exchange: { defaultSpreadBps: 0 },
-    marketplace: { makerFeeBps: 0, takerFeeBps: 0, floorPrices: {}, ceilingPrices: {}, relistCooldownHours: 0 },
+    exchange: { defaultSpreadBps: 0, tradeFeeBps: 0 },
+    marketplace: {
+      makerFeeBps: 0,
+      takerFeeBps: 0,
+      floorPrices: {},
+      ceilingPrices: {},
+      relistCooldownHours: 0,
+      dailyListingLimit: 0
+    },
     wallet: { depositFeeBps: 0, withdrawFeeBps: 0 },
     guardrails: { maxAnimalsPerUser: 0, maxPlotsPerUser: 0 },
     rentEscalationBps: 0
@@ -165,6 +193,30 @@ export function computeExchangeQuotes(mid: number | string | Decimal, spreadBps:
   const buy = midDecimal.mul(new Decimal(1).minus(spread));
   const sell = midDecimal.mul(new Decimal(1).add(spread));
   return { buy, sell };
+}
+
+export function buildExchangePreview(params: {
+  mid: number | string | Decimal;
+  spreadBps: number;
+  side: 'BUY' | 'SELL';
+  qty: number | string | Decimal;
+  feeBps?: number;
+}) {
+  const { buy, sell } = computeExchangeQuotes(params.mid, params.spreadBps);
+  const price = params.side === 'BUY' ? sell : buy;
+  const qty = toDecimal(params.qty);
+  const notional = price.mul(qty);
+  const feeRate = toDecimal(params.feeBps ?? 0).div(10_000);
+  const fee = notional.mul(feeRate);
+  const effectiveTotal = params.side === 'BUY' ? notional.add(fee) : notional.sub(fee);
+  const effectiveRate = effectiveTotal.div(qty);
+  return {
+    price,
+    notional,
+    fee,
+    effectiveRate,
+    slippage: new Decimal(0)
+  };
 }
 
 export function projectROI(params: {

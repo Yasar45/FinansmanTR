@@ -141,6 +141,8 @@ model User {
   paymentIntents PaymentIntent[]
   withdrawalRequests WithdrawalRequest[]
   withdrawalReviews  WithdrawalRequest[] @relation("withdrawal_reviewer")
+  disputesOpened     MarketplaceDispute[] @relation("dispute_opened_by")
+  disputesResolved   MarketplaceDispute[] @relation("dispute_resolved_by")
 }
 
 model Profile {
@@ -399,9 +401,11 @@ model MarketplaceListing {
   id        String                    @id @default(cuid())
   sellerId  String
   assetRef  String
-  refId     String   @unique
+  refId     String
+  symbol    String?
   priceTRY  Decimal
   qty       Decimal
+  metadata  Json?
   status    MarketplaceListingStatus @default(ACTIVE)
   expiresAt DateTime?
   createdAt DateTime @default(now())
@@ -409,6 +413,9 @@ model MarketplaceListing {
 
   seller User   @relation(fields: [sellerId], references: [id])
   orders Order[]
+
+  @@index([sellerId, createdAt])
+  @@index([refId, assetRef])
 }
 
 model Order {
@@ -424,6 +431,7 @@ model Order {
   listing MarketplaceListing @relation(fields: [listingId], references: [id])
   maker   User               @relation("order_maker", fields: [makerId], references: [id])
   trade   Trade?
+  disputes MarketplaceDispute[]
 }
 
 model Trade {
@@ -439,14 +447,40 @@ model Trade {
   taker User  @relation("trade_taker", fields: [takerId], references: [id])
 }
 
+model MarketplaceDispute {
+  id           String   @id @default(cuid())
+  listingId    String
+  orderId      String?
+  openedById   String
+  status       String
+  reason       String
+  resolution   String?
+  resolvedById String?
+  createdAt    DateTime @default(now())
+  resolvedAt   DateTime?
+
+  listing    MarketplaceListing @relation(fields: [listingId], references: [id])
+  order      Order?              @relation(fields: [orderId], references: [id])
+  openedBy   User                @relation("dispute_opened_by", fields: [openedById], references: [id])
+  resolvedBy User?               @relation("dispute_resolved_by", fields: [resolvedById], references: [id])
+
+  @@index([listingId])
+  @@index([openedById])
+}
+
+enum SystemPriceSource {
+  ADMIN
+  ORACLE
+}
+
 model SystemPrice {
-  id         String   @id @default(cuid())
-  symbol     String   @unique
-  buyTRY     Decimal
-  sellTRY    Decimal
-  spreadBps  Int
-  updatedAt  DateTime @updatedAt
-  createdAt  DateTime @default(now())
+  id            String            @id @default(cuid())
+  symbol        String            @unique
+  midPriceTRY   Decimal
+  spreadBps     Int
+  source        SystemPriceSource @default(ADMIN)
+  lastUpdatedAt DateTime          @updatedAt
+  createdAt     DateTime          @default(now())
 }
 
 model EconomyRule {

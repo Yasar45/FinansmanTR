@@ -5,9 +5,9 @@ import { prisma } from '@/lib/prisma';
 
 const updatePriceSchema = z.object({
   symbol: z.string(),
-  buyTRY: z.number().positive(),
-  sellTRY: z.number().positive(),
-  spreadBps: z.number().int().nonnegative()
+  midPriceTRY: z.number().positive(),
+  spreadBps: z.number().int().nonnegative(),
+  source: z.enum(['ADMIN', 'ORACLE']).default('ADMIN')
 });
 
 export async function POST(request: Request) {
@@ -25,9 +25,9 @@ export async function POST(request: Request) {
   const price = await prisma.systemPrice.upsert({
     where: { symbol: parsed.data.symbol },
     update: {
-      buyTRY: parsed.data.buyTRY,
-      sellTRY: parsed.data.sellTRY,
-      spreadBps: parsed.data.spreadBps
+      midPriceTRY: parsed.data.midPriceTRY,
+      spreadBps: parsed.data.spreadBps,
+      source: parsed.data.source
     },
     create: parsed.data
   });
