@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+coverage
+.env*
+*.log
+.playwright
+pnpm-lock.yaml
+yarn.lock
+.DS_Store
+

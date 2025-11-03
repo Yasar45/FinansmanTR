@@ -1,0 +1,475 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+datasource kv {
+  provider = "postgresql"
+  url      = env("SHADOW_DATABASE_URL", env("DATABASE_URL"))
+}
+
+enum Role {
+  USER
+  MOD
+  ADMIN
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  WITHDRAW
+  BUY_ASSET
+  SELL_ASSET
+  FEE
+  FEED_PURCHASE
+  SUPPLY_PURCHASE
+  MAINTENANCE
+  MARKET_TRADE
+  EXCHANGE_TRADE
+}
+
+enum KycStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+}
+
+enum PlotType {
+  GREENHOUSE
+  HYDROPONIC
+}
+
+enum OutputKind {
+  EGG
+  MILK
+  HONEY
+  TOMATO
+  PEPPER
+  EGGPLANT
+  LETTUCE
+  CUSTOM
+}
+
+enum MarketplaceListingStatus {
+  ACTIVE
+  FILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum CropStatus {
+  PLANTED
+  GROWING
+  SUSPENDED
+  READY
+  HARVESTED
+  WITHERED
+}
+
+enum AnimalStatus {
+  ACTIVE
+  STALLED
+  DEAD
+}
+
+enum PlotStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  role          Role         @default(USER)
+  abilities     String[]     @default([])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  profile       Profile?
+  kycDocuments  KycDocument[]
+  sessions      Session[]
+  apiKeys       ApiKey[]
+  wallets       Wallet[]
+  animals       Animal[]
+  plots         Plot[]
+  outputs       OutputInventory[]
+  listings      MarketplaceListing[]
+  orders        Order[]      @relation("order_maker")
+  trades        Trade[]      @relation("trade_taker")
+  notifications Notification[]
+  auditLogs     AuditLog[]   @relation("audit_actor")
+  reviews       KycDocument[] @relation("kyc_reviewer")
+}
+
+model Profile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  firstName       String?
+  lastName        String?
+  preferredLocale String    @default("tr-TR")
+  phoneNumber     String?
+  address         Json?
+  birthDate       DateTime?
+  kycStatus       KycStatus @default(UNVERIFIED)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id])
+}
+
+model KycDocument {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  status    String    @default("PENDING")
+  data      Json
+  createdAt DateTime  @default(now())
+  reviewedAt DateTime?
+  reviewerId String?
+
+  user     User @relation(fields: [userId], references: [id])
+  reviewer User? @relation("kyc_reviewer", fields: [reviewerId], references: [id])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  name      String
+  keyHash   String   @unique
+  userId    String
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String
+  balance   Decimal  @default(0)
+  currency  String   @default("TRY")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ledger    WalletTransaction[]
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model WalletTransaction {
+  id        String                 @id @default(cuid())
+  walletId  String
+  type      WalletTransactionType
+  amount    Decimal
+  balance   Decimal
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, createdAt])
+}
+
+model AnimalType {
+  id                  String   @id @default(cuid())
+  name                String   @unique
+  purchasePriceTRY    Decimal
+  feedTypeId          String
+  feedPerTick         Decimal
+  productionUnit      String   @default("unit")
+  baseHourlyOutput    Decimal  @default(0)
+  maturityDays        Int
+  baseSellPriceTRY    Decimal
+  agingCurve          Json
+  lifespanDays        Int?
+  seasonalityKey      String?
+  outputIntervalHours Int?    @default(1)
+  healthFloor         Int      @default(40)
+  mortalityRateBps    Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  feedType            FeedType @relation(fields: [feedTypeId], references: [id])
+  animals             Animal[]
+}
+
+model CropType {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  plantingCostTRY   Decimal
+  cycleDays         Int
+  yieldPerCycle     Decimal
+  outputUnit        String
+  baseSellPriceTRY  Decimal
+  seasonalityKey    String?
+  electricityCostTRY Decimal @default(0)
+  droughtResilient  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  cropInstances     CropInstance[]
+}
+
+model FeedType {
+  id           String   @id @default(cuid())
+  sku          String   @unique
+  name         String
+  unit         String
+  unitCostTRY  Decimal
+  supplies     SupplyType[]
+  animals      AnimalType[]
+}
+
+model SupplyType {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  unit        String
+  unitCostTRY Decimal
+  feedTypeId  String?
+  feedType    FeedType? @relation(fields: [feedTypeId], references: [id])
+}
+
+model Animal {
+  id               String        @id @default(cuid())
+  ownerId          String
+  typeId           String
+  ageDays          Int           @default(0)
+  health           Int           @default(100)
+  productivityMod  Decimal       @default(1)
+  isMature         Boolean       @default(false)
+  lastTickAt       DateTime      @default(now())
+  lastAgedAt       DateTime      @default(now())
+  status           AnimalStatus  @default(ACTIVE)
+  feedDeficitTicks Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  owner User        @relation(fields: [ownerId], references: [id])
+  type  AnimalType  @relation(fields: [typeId], references: [id])
+  feeds FeedLedger[]
+}
+
+model Plot {
+  id                     String     @id @default(cuid())
+  ownerId                String
+  type                   PlotType
+  size                   String
+  rentOrBuy              String
+  rentPriceTRY           Decimal?
+  buyPriceTRY            Decimal?
+  maintenanceTRY         Decimal    @default(0)
+  maintenanceEscalationBps Int      @default(0)
+  status                 PlotStatus @default(ACTIVE)
+  lastMaintenanceAt      DateTime?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  owner   User           @relation(fields: [ownerId], references: [id])
+  crops   CropInstance[]
+}
+
+model CropInstance {
+  id            String    @id @default(cuid())
+  plotId        String
+  cropTypeId    String
+  plantedAt     DateTime
+  harvestAt     DateTime
+  expectedYield Decimal
+  status        CropStatus @default(PLANTED)
+  growthPercent Decimal    @default(0)
+  lastTickAt    DateTime   @default(now())
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  plot     Plot     @relation(fields: [plotId], references: [id])
+  cropType CropType @relation(fields: [cropTypeId], references: [id])
+}
+
+model OutputInventory {
+  id          String     @id @default(cuid())
+  ownerId     String
+  kind        OutputKind
+  qty         Decimal    @default(0)
+  unit        String
+  avgCostTRY  Decimal    @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@unique([ownerId, kind], name: "ownerId_kind")
+}
+
+model MarketplaceListing {
+  id        String                    @id @default(cuid())
+  sellerId  String
+  assetRef  String
+  refId     String   @unique
+  priceTRY  Decimal
+  qty       Decimal
+  status    MarketplaceListingStatus @default(ACTIVE)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seller User   @relation(fields: [sellerId], references: [id])
+  orders Order[]
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  listingId String
+  makerId   String
+  takerId   String?
+  priceTRY  Decimal
+  qty       Decimal
+  feesTRY   Decimal @default(0)
+  createdAt DateTime @default(now())
+
+  listing MarketplaceListing @relation(fields: [listingId], references: [id])
+  maker   User               @relation("order_maker", fields: [makerId], references: [id])
+  trade   Trade?
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  takerId   String
+  priceTRY  Decimal
+  qty       Decimal
+  feesTRY   Decimal @default(0)
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+  taker User  @relation("trade_taker", fields: [takerId], references: [id])
+}
+
+model SystemPrice {
+  id         String   @id @default(cuid())
+  symbol     String   @unique
+  buyTRY     Decimal
+  sellTRY    Decimal
+  spreadBps  Int
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+}
+
+model EconomyRule {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductionLog {
+  id        String   @id @default(cuid())
+  ownerId   String
+  tickAt    DateTime
+  details   Json
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId, tickAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("audit_actor", fields: [actorId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  seenAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model FeedLedger {
+  id        String   @id @default(cuid())
+  animalId  String
+  feedTypeId String
+  qty       Decimal
+  createdAt DateTime @default(now())
+
+  animal   Animal   @relation(fields: [animalId], references: [id])
+  feedType FeedType @relation(fields: [feedTypeId], references: [id])
+}
+
+model FeedInventory {
+  id         String   @id @default(cuid())
+  ownerId    String
+  feedTypeId String
+  qty        Decimal  @default(0)
+  avgCostTRY Decimal  @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner    User     @relation(fields: [ownerId], references: [id])
+  feedType FeedType @relation(fields: [feedTypeId], references: [id])
+
+  @@unique([ownerId, feedTypeId])
+}
+
+model SupplyInventory {
+  id           String   @id @default(cuid())
+  ownerId      String
+  supplyTypeId String
+  qty          Decimal  @default(0)
+  avgCostTRY   Decimal  @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner      User       @relation(fields: [ownerId], references: [id])
+  supplyType SupplyType @relation(fields: [supplyTypeId], references: [id])
+
+  @@unique([ownerId, supplyTypeId])
+}
